@@ -1,0 +1,58 @@
+{
+  "name": "zmap",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reusable browser-hosted worlds with real height and app-owned policy",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js"
+    },
+    "./core": {
+      "development": "./src/core.ts",
+      "types": "./lib/core.d.ts",
+      "import": "./lib/core.js"
+    },
+    "./server": {
+      "development": "./src/server.ts",
+      "types": "./lib/server.d.ts",
+      "import": "./lib/server.js"
+    }
+  },
+  "scripts": {
+    "dev": "concurrently -k 'tsx --conditions=development examples/server.ts' 'vite --host 0.0.0.0'",
+    "build": "npm run typecheck && npm run build:lib && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --conditions=development --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "build:lib": "tsc -p tsconfig.lib.json",
+    "prepack": "npm run build:lib",
+    "format": "prettier --write src examples tests *.ts *.json README.md docs/{api,content,implementation-plan,source-audit,status,operations,provenance}.md",
+    "format:check": "prettier --check src examples tests *.ts *.json README.md docs/{api,content,implementation-plan,source-audit,status,operations,provenance}.md",
+    "test:package": "node scripts/package-smoke.mjs"
+  },
+  "dependencies": {
+    "three": "^0.180.0",
+    "ws": "^8.18.3",
+    "@types/three": "^0.180.0",
+    "@types/node": "^22.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.2.1",
+    "prettier": "^3.9.6",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.5"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "docs/api.md",
+    "docs/content.md",
+    "src"
+  ]
+}

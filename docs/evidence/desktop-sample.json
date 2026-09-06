@@ -1,0 +1,23 @@
+{
+  "date": "2026-09-06T21:43:49.071Z",
+  "platform": "darwin",
+  "release": "25.6.0",
+  "arch": "arm64",
+  "browser": "152.0.7977.82",
+  "viewport": "1440×1050",
+  "method": "One headless desktop run against Vite development server, six seconds after ready, one avatar. Not a cold/warm or physical-phone qualification.",
+  "joinMs": 42.69999998807907,
+  "render": {
+    "frameP95Ms": 16.799999999999955,
+    "drawCalls": 135,
+    "triangles": 2714,
+    "geometries": 135,
+    "textures": 4
+  },
+  "traffic": {
+    "incoming": 45548,
+    "outgoing": 36478
+  },
+  "players": 1,
+  "epoch": 1
+}
