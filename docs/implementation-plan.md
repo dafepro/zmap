@@ -10,7 +10,7 @@ The owner clarified during implementation that Zoomigo is alpha with no data wor
 
 Confirmed: reusable zmap library; Zoomap presentation; player-controlled visible avatars; real height; shared toys; app-owned identity, inventory and policy; low idle cost; independent integrations. The supplied Zoomigo poster is visual context, not a requirement to implement every depicted feature.
 
-Reversible defaults: fixed-angle orthographic follow view; screen-relative WASD/arrows and touch stick; no jump; pass-through players; terraced courtyard with ramp and a traversable bridge/underpass; original procedural faceted athletic characters and scenery. First-person, large catalog, accounts, chat, rewards and broad engine tooling are excluded from this increment.
+Reversible defaults: fixed-angle orthographic follow view; screen-relative WASD/arrows and touch stick; no jump; pass-through players; terraced courtyard with ramp and a traversable bridge/underpass; original Blender athletic character kit and faceted authored scenery. First-person, large catalog, accounts, chat, rewards and broad engine tooling are excluded from this increment.
 
 ## Architecture decision
 
@@ -22,7 +22,7 @@ Reversible defaults: fixed-angle orthographic follow view; screen-relative WASD/
 
 ## File tree
 
-`src/core.ts`, `src/client.ts`, `src/view.ts`, `src/server.ts`, `src/index.ts`; `examples/content.ts`, `examples/characters.ts`, `examples/server.ts`, `examples/hub/`; `tests/`; `docs/` evidence, API, audit and operation notes.
+`src/core.ts`, `src/toy-physics.ts`, `src/presentation.ts`, `src/client.ts`, `src/view.ts`, `src/server.ts`, `src/index.ts`; `examples/content.ts`, `examples/models.ts`, `assets/source/`, `examples/server.ts`, `examples/hub/`; `tests/`; `docs/` evidence, API, audit and operation notes.
 
 ## Increments and acceptance mapping
 
@@ -31,6 +31,10 @@ Reversible defaults: fixed-angle orthographic follow view; screen-relative WASD/
 3. Real multi-client room, late join, trigger, lease loss and reconnect (Z-01/05/06/07/12, A-03/06).
 4. App-owned mock identity and entitlements, validated placement/edit/return, idempotent durable store, server restart (Z-08/09/11, A-04/05/07).
 5. Three focused consumer modes, browser verification, measured initial bundle and evidence/backlog (Z-14, A-12/13). Do not mark A-01 phone, A-11 or V1 passed from desktop automation.
+
+## Review iteration — completed 2026-09-06
+
+The owner requested broad hardening, especially ball physics and Blender art. Added scalar rolling resistance, contact-normal reflection/substeps, bounce and home reset; remote pose interpolation and frame-rate-independent presentation; an original editable Blender kit with bounded loading and independent instance disposal; isolated room queues, read deadlines, load-capacity reservations and strict saved-record validation. Regressions cover slow callbacks, pending commits, corruption, model failures and mount cancellation. Current results and remaining gaps are tracked in [status](status.md).
 
 ## Benchmark protocol
 

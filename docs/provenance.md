@@ -2,7 +2,15 @@
 
 The supplied Zoomigo poster is the owner's visual reference. It is not bundled as runtime artwork. No Minecraft assets, models, branding or code were copied. The Canvas and Zoomigo repositories were inspected as source evidence; no implementation source or artwork was copied into this library.
 
-All courtyard geometry, characters, animation, vegetation, furniture, ball vertex colors and sign textures in `examples/` were created as original source in this workspace. Editable TypeScript is retained. There are no downloaded fonts, remote runtime assets or generated opaque binaries. Screenshots under `docs/evidence` were captured from the running examples.
+The courtyard, animation, vegetation and signage were authored as original TypeScript. The athlete, paneled soccer ball, slatted bench and planter were authored in Blender 5.2.1 LTS using `assets/source/build_models.py`. The editable `assets/source/zoomap-kit.blend` and export manifest are retained; four self-contained GLBs total 408,092 bytes. The athlete uses named limb/head pivots, with runtime animation and approved palettes supplied by the example app. No downloaded artwork or fonts are bundled. `docs/evidence/blender-kit.png` is a Blender render; the shared/decorating/portrait screenshots show the GLBs in the running examples.
+
+To rebuild with Blender installed:
+
+```sh
+/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup --python assets/source/build_models.py
+```
+
+The builder starts from a disposable factory scene and writes only this kit’s source, GLBs, manifest and evidence render. It does not modify an open user scene.
 
 The project has not selected a distribution license; the package remains private. This file does not assign a license on the owner's behalf.
 

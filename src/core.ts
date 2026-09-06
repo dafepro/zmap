@@ -1,3 +1,4 @@
+import { advanceToy } from "./toy-physics.js";
 /** Version 1 contracts: metres, Y-up, radians, fixed simulation seconds. */
 export type Vec3 = { x: number; y: number; z: number };
 export type Rect = { x: number; z: number; width: number; depth: number };
@@ -7,6 +8,7 @@ export type Surface = Rect & {
   slope?: number;
   thickness: number;
   color?: string;
+  rollingResistance?: number;
 };
 export type Blocker = Rect & { y: number; height: number };
 export type Toy = {
@@ -15,6 +17,7 @@ export type Toy = {
   radius: number;
   color: string;
   sleep: "home";
+  restitution?: number;
 };
 export type Trigger = {
   id: string;
@@ -163,7 +166,10 @@ export function validateMap(map: WorldMap) {
       !finite(s.thickness) ||
       s.thickness < 0 ||
       !finite(s.slope ?? 0) ||
-      Math.abs(s.slope ?? 0) > 1
+      Math.abs(s.slope ?? 0) > 1 ||
+      !finite(s.rollingResistance ?? 0.65) ||
+      (s.rollingResistance ?? 0.65) < 0 ||
+      (s.rollingResistance ?? 0.65) > 10
     )
       throw Error("Invalid surface");
     ids.add(s.id);
@@ -181,7 +187,10 @@ export function validateMap(map: WorldMap) {
       t.radius > 2 ||
       !inside(map.bounds, t.home.x, t.home.z, t.radius) ||
       !supportAt(map, t.home.x, t.home.z, t.home.y + 0.01) ||
-      t.sleep !== "home"
+      t.sleep !== "home" ||
+      !finite(t.restitution ?? 0.65) ||
+      (t.restitution ?? 0.65) < 0 ||
+      (t.restitution ?? 0.65) > 1
     )
       throw Error("Invalid toy");
     ids.add(t.id);
@@ -367,13 +376,15 @@ export function stepWorld(
         b.vz = (dz / Math.max(0.1, distance)) * 8;
         b.vy = 3;
       } else if (distance < t.radius + 0.28 && Math.hypot(p.vx, p.vz) > 0.1) {
-        b.vx = p.vx * 1.1;
-        b.vz = p.vz * 1.1;
+        const nx = dx / Math.max(0.01, distance),
+          nz = dz / Math.max(0.01, distance);
+        const closing = (p.vx - b.vx) * nx + (p.vz - b.vz) * nz;
+        if (closing > 0) {
+          b.vx += nx * closing;
+          b.vz += nz * closing;
+        }
       }
     }
-    const surface = supportAt(map, b.x, b.z, b.y + 0.05);
-    if (surface && Math.abs(top(surface, b.z) - b.y) < 0.05)
-      b.vz -= (surface.slope ?? 0) * 12 * STEP;
     for (const trigger of map.triggers) {
       if (
         state.triggers[trigger.id] <= 0 &&
@@ -387,9 +398,7 @@ export function stepWorld(
         state.triggers[trigger.id] = trigger.cooldown;
       }
     }
-    b.vx *= 0.986;
-    b.vz *= 0.986;
-    moveBody(map, b, t.radius, t.radius * 2, STEP, items, catalog);
+    advanceToy(map, b, t, STEP, items, catalog);
   }
   for (const key of Object.keys(state.triggers))
     state.triggers[key] = Math.max(0, state.triggers[key] - STEP);
@@ -477,4 +486,63 @@ export function validSimulation(
         state.triggers[t.id] <= t.cooldown,
     )
   );
+}
+
+export function validateDurableState(
+  state: unknown,
+  map: WorldMap,
+  catalog?: ItemType[],
+): asserts state is DurableState {
+  const record = (v: any) =>
+    v !== null && typeof v === "object" && !Array.isArray(v);
+  const s = state as DurableState;
+  if (
+    !record(s) ||
+    s.version !== 1 ||
+    s.mapId !== map.id ||
+    !Number.isSafeInteger(s.revision) ||
+    s.revision < 0 ||
+    !Array.isArray(s.items) ||
+    s.items.length > 50 ||
+    !record(s.receipts) ||
+    Object.keys(s.receipts).length > 10000
+  )
+    throw Error("Saved room is invalid or incompatible");
+  const ids = new Set<string>();
+  for (const p of s.items) {
+    if (
+      !record(p) ||
+      !validId(p.id) ||
+      ids.has(p.id) ||
+      !validId(p.type) ||
+      !validId(p.owner) ||
+      !validVec(p.position) ||
+      !finite(p.rotation) ||
+      !Number.isSafeInteger(p.revision) ||
+      p.revision < 1 ||
+      p.revision > s.revision ||
+      !inside(map.bounds, p.position.x, p.position.z) ||
+      Object.keys(p).some(
+        (k) =>
+          !["id", "type", "owner", "position", "rotation", "revision"].includes(
+            k,
+          ),
+      )
+    )
+      throw Error("Saved placement is invalid");
+    ids.add(p.id);
+    if (catalog && placementError(map, catalog, s.items, p))
+      throw Error("Saved placement does not match current content");
+  }
+  for (const [key, r] of Object.entries(s.receipts))
+    if (
+      !/^[a-zA-Z0-9_-]{1,80}:[a-zA-Z0-9_-]{1,80}$/.test(key) ||
+      !record(r) ||
+      typeof r.fingerprint !== "string" ||
+      !/^[a-f0-9]{64}$/.test(r.fingerprint) ||
+      !Number.isSafeInteger(r.revision) ||
+      r.revision < 1 ||
+      r.revision > s.revision
+    )
+      throw Error("Saved receipt is invalid");
 }

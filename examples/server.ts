@@ -29,13 +29,15 @@ const service = createRoomService({
   canAccess: async (_identity, room) =>
     ["explore", "shared", "decorate"].includes(room),
 });
-server.listen(8787, "0.0.0.0", () => {
-  console.log("Zoomap DEVELOPMENT relay :8787 — mock identities only.");
-  console.log("Examples: http://localhost:5173");
+const port = Number(process.env.ZMAP_RELAY_PORT ?? 8787);
+const clientPort = Number(process.env.ZMAP_PORT ?? 5173);
+server.listen(port, "0.0.0.0", () => {
+  console.log(`Zoomap DEVELOPMENT relay :${port} — mock identities only.`);
+  console.log(`Examples: http://localhost:${clientPort}`);
   for (const addresses of Object.values(networkInterfaces()))
     for (const a of addresses ?? [])
       if (a.family === "IPv4" && !a.internal)
-        console.log(`LAN examples: http://${a.address}:5173`);
+        console.log(`LAN examples: http://${a.address}:${clientPort}`);
 });
 async function close() {
   await service.close();

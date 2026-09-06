@@ -1,0 +1,29 @@
+{
+  "blender": "5.2.1 LTS",
+  "assets": [
+    {
+      "file": "athlete-v1.glb",
+      "bytes": 200576,
+      "triangles": 2364,
+      "meshes": 6
+    },
+    {
+      "file": "match-ball-v1.glb",
+      "bytes": 138568,
+      "triangles": 3200,
+      "meshes": 1
+    },
+    {
+      "file": "bench-v1.glb",
+      "bytes": 41368,
+      "triangles": 476,
+      "meshes": 1
+    },
+    {
+      "file": "planter-v1.glb",
+      "bytes": 27580,
+      "triangles": 264,
+      "meshes": 1
+    }
+  ]
+}

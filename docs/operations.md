@@ -4,15 +4,19 @@
 
 `npm ci && npm run dev` runs the development relay on 8787 and Vite on 5173, both on the LAN. Open the printed LAN URL from a phone on the same network. Browser traffic uses the same-origin Vite WebSocket proxy. `ZMAP_DATA_DIR` selects the demo persistence directory; default `.data/examples-v1` is ignored by Git.
 
+Browser tests run separate servers on 5174/8788 with `.data/browser-tests`, so they do not replace a visitor in the live 5173 example. Override development ports with `ZMAP_PORT` and `ZMAP_RELAY_PORT`.
+
 The fixture server intentionally accepts Ari/Sam/Jo tokens. Use it only for development. Public hosting requires app-issued credentials, current access checks, an origin allowlist, TLS, bounded app callbacks and an appropriate transactional persistence adapter. There is no mandatory per-room server simulation process.
 
 ## Persistence and restart
 
 Accepted file-store edits write a temporary file, fsync it, rename it and fsync the directory before acknowledging. The persisted JSON includes map/version, room revision, items and idempotency receipts. Back up the whole room record, including receipts. Do not copy only placements and discard retry protection. The example requires one process/writer on a local filesystem with working rename/fsync semantics. It does not claim distributed transaction safety or arbitrary network-filesystem durability.
 
-To rehearse restore: stop the example service, copy the selected `.data/examples-v1` directory, start with a separate `ZMAP_DATA_DIR`, and verify owner/item/revision counts plus retry behavior before returning traffic. Do not modify files while the service accepts writes. Unknown map/version fails rather than silently reinterpreting content. The reference store's deeper corruption checking is still a hardening task.
+To rehearse restore: stop the example service, copy the selected `.data/examples-v1` directory, start with a separate `ZMAP_DATA_DIR`, and verify owner/item/revision counts plus retry behavior before returning traffic. Do not modify files while the service accepts writes. Unknown map/version fails rather than silently reinterpreting content. Malformed owners, duplicate item IDs, invalid revisions and receipts fail closed; service loading also checks placements against the current content.
 
 On server restart, browsers reconnect with fresh credentials and restore durable layouts. Transient balls return home; the last accepted browser snapshot is memory-only and is lost with service failure. Browser-host loss while the service survives uses the most recent accepted snapshot (15 Hz nominal). Acknowledged durable state is separate from that transient recovery window.
+
+Read-only app waits default to two seconds. Room queues are isolated and bounded; a hanging durable write stalls its room until the adapter settles. Set database/network deadlines inside the app adapter, preserving a stable command ID when the result is unknown. The service never cancels a durable write and then accepts a competing write based on an assumed failure. Concurrent room loads reserve capacity before touching storage.
 
 ## Diagnostics
 

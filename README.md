@@ -21,6 +21,8 @@ Open [the courtyard](http://localhost:5173). The development server also prints 
 
 WASD/arrows move relative to the screen. Space kicks, E waves. Click the world to focus keyboard controls. Touch controls appear in the portrait layout. Decorating pauses local movement and focuses the candidate placement. The same identity in a second tab replaces the previous session explicitly; choose another demo identity to play together.
 
+The athlete, ball, bench and planter are original Blender models. [Editable source and rebuild instructions](docs/provenance.md) and [the kit render](docs/evidence/blender-kit.png) are included.
+
 ## Integrate
 
 ```ts
@@ -58,7 +60,7 @@ npx playwright install chromium
 ZMAP_BROWSER_CHANNEL=chromium npm run test:e2e
 ```
 
-The browser suite defaults to installed Google Chrome; set the environment variable above to use downloaded Chromium. Tests cover geometry/height, durable ownership and retries, real WebSocket authority and late join, browser multiplayer, decorating, portrait pointer controls and 20 lifecycle cycles. Tests use synthetic data and local services only.
+The browser suite defaults to installed Google Chrome; set the environment variable above to use downloaded Chromium. Tests cover geometry/height, friction and collision regression, remote interpolation, Blender asset contracts, durable corruption/retries, room isolation/capacity, real WebSocket authority, browser multiplayer, decorating, portrait input, model-failure recovery and 20 lifecycle cycles. Tests use synthetic data and local services only.
 
 ## Working notes
 

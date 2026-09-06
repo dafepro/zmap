@@ -1,3 +1,4 @@
+import { rollingMotion } from "./presentation.js";
 import * as THREE from "three";
 import {
   top,
@@ -58,6 +59,7 @@ export class WorldView {
   private marker: THREE.Mesh;
   private frameTimes: number[] = [];
   private lastFrame = 0;
+  private toyPositions = new Map<string, Vec3>();
   constructor(
     readonly container: HTMLElement,
     readonly map: WorldMap,
@@ -137,6 +139,13 @@ export class WorldView {
     this.observer.observe(container);
     this.resize();
   }
+  reset() {
+    this.revision = -1;
+    this.initialized = false;
+    this.lastFrame = 0;
+    this.frameTimes = [];
+    this.toyPositions.clear();
+  }
   private resize() {
     const width = Math.max(1, this.container.clientWidth),
       height = Math.max(1, this.container.clientHeight);
@@ -158,7 +167,10 @@ export class WorldView {
     time: number,
     reducedMotion: boolean,
   ) {
-    if (this.lastFrame) {
+    const dt = this.lastFrame
+      ? Math.max(0, Math.min(0.1, (time - this.lastFrame) / 1000))
+      : 0;
+    if (this.lastFrame && time > this.lastFrame) {
       this.frameTimes.push(time - this.lastFrame);
       if (this.frameTimes.length > 300) this.frameTimes.shift();
     }
@@ -201,10 +213,22 @@ export class WorldView {
       const b = state.toys[t.id],
         mesh = this.toys.get(t.id)!;
       mesh.position.set(b.x, b.y + t.radius, b.z);
-      if (!reducedMotion) {
-        mesh.rotation.x += b.vz * 0.015;
-        mesh.rotation.z -= b.vx * 0.015;
+      const previous = this.toyPositions.get(t.id);
+      if (
+        previous &&
+        !reducedMotion &&
+        Math.hypot(b.x - previous.x, b.z - previous.z) < 2
+      ) {
+        const roll = rollingMotion(previous, b, t.radius);
+        if (roll.angle)
+          mesh.quaternion.premultiply(
+            new THREE.Quaternion().setFromAxisAngle(
+              new THREE.Vector3(roll.axis.x, 0, roll.axis.z),
+              roll.angle,
+            ),
+          );
       }
+      this.toyPositions.set(t.id, { x: b.x, y: b.y, z: b.z });
     }
     for (const trigger of this.map.triggers) {
       const object = this.scene.getObjectByName(`trigger-${trigger.id}`);
@@ -230,7 +254,7 @@ export class WorldView {
       const focus = this.previewFocus ?? local;
       const desired = new THREE.Vector3(focus.x, focus.y + 0.8, focus.z);
       if (!this.initialized || reducedMotion) this.target.copy(desired);
-      else this.target.lerp(desired, 0.12);
+      else this.target.lerp(desired, 1 - Math.exp(-8 * dt));
       this.initialized = true;
       this.camera.position.copy(this.target).add(new THREE.Vector3(16, 19, 16));
       this.camera.lookAt(this.target);

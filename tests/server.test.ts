@@ -203,3 +203,145 @@ test("full rooms reject a new identity but allow the same identity to replace it
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("slow app authentication does not block another room and times out", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "zmap-isolation-"));
+  const http = createServer();
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    adapterTimeoutMs: 100,
+    store: new ExampleStore(dir, () => true),
+    authenticate: async (token) =>
+      token === "stalled" ? new Promise(() => {}) : (identities[token] ?? null),
+    canAccess: async () => true,
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const url = `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`;
+  try {
+    const slow = connect(url, "stalled", "slow");
+    const good = connect(url, "ari", "healthy");
+    await good.wait("welcome");
+    await slow.wait("rejected", (m) => m.reason.includes("timed out"));
+    assert.equal(service.diagnostics().peers, 1);
+    good.ws.terminate();
+    slow.ws.terminate();
+  } finally {
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test("a pending durable commit cannot stall another room or produce a premature saved receipt", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "zmap-pending-"));
+  const http = createServer();
+  const store = new ExampleStore(dir, () => true);
+  let resolveCommit: (() => void) | undefined;
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    adapterTimeoutMs: 100,
+    store: {
+      load: (...args) => store.load(...args),
+      commit: async (...args) => {
+        await new Promise<void>((r) => {
+          resolveCommit = r;
+        });
+        return store.commit(...args);
+      },
+    },
+    authenticate: async (token) => identities[token] ?? null,
+    canAccess: async () => true,
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const url = `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`;
+  try {
+    const slow = connect(url, "ari", "slow");
+    await slow.wait("welcome");
+    slow.send({
+      type: "edit",
+      command: {
+        id: "pending",
+        operation: "place",
+        itemId: "pot",
+        type: "planter",
+        position: { x: 10, y: 0, z: 4 },
+        rotation: 0,
+        expectedRevision: 0,
+      },
+    });
+    const good = connect(url, "sam", "healthy");
+    await good.wait("welcome");
+    assert.equal(
+      slow.messages.some((m) => m.type === "saved"),
+      false,
+    );
+    assert.ok(resolveCommit);
+    resolveCommit();
+    await slow.wait("saved");
+    slow.ws.terminate();
+    good.ws.terminate();
+  } finally {
+    resolveCommit?.();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+test("concurrent room loads reserve capacity before awaiting the store", async () => {
+  const http = createServer();
+  let release!: () => void;
+  const held = new Promise<void>((r) => {
+    release = r;
+  });
+  let loading = 0;
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    store: {
+      load: async () => {
+        loading++;
+        await held;
+        return {
+          version: 1,
+          mapId: courtyard.id,
+          revision: 0,
+          items: [],
+          receipts: {},
+        };
+      },
+      commit: async () => {
+        throw Error("Unused");
+      },
+    },
+    authenticate: async () => identities.ari,
+    canAccess: async () => true,
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const url = `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`;
+  const clients = Array.from({ length: 100 }, (_, i) =>
+    connect(url, "ari", `room-${i}`),
+  );
+  try {
+    for (let i = 0; i < 100 && loading < 100; i++) await sleep(10);
+    assert.equal(loading, 100);
+    const extra = connect(url, "ari", "room-extra");
+    await new Promise<void>((r) =>
+      extra.ws.once("close", (code) => {
+        assert.equal(code, 4429);
+        r();
+      }),
+    );
+    release();
+    await Promise.all(clients.map((c) => c.wait("welcome")));
+    assert.equal(service.diagnostics().rooms, 100);
+  } finally {
+    release();
+    for (const c of clients) c.ws.terminate();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+  }
+});

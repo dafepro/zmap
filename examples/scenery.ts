@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { WorldMap } from "zmap";
-import { box, bench, planter } from "./characters";
+import { box } from "./characters";
+import type { ModelKit } from "./models";
 const material = (color: string) =>
   new THREE.MeshStandardMaterial({ color, roughness: 1, flatShading: true });
 function label(
@@ -31,7 +32,7 @@ function label(
   mesh.position.set(position[0], position[1], position[2]);
   scene.add(mesh);
 }
-export function scenery(scene: THREE.Scene, map: WorldMap) {
+export function scenery(scene: THREE.Scene, map: WorldMap, kit: ModelKit) {
   const tileGeo = new THREE.BoxGeometry(1.92, 0.03, 1.92),
     tileMat = material("#e7ddc8");
   const tiles = new THREE.InstancedMesh(tileGeo, tileMat, 160);
@@ -115,7 +116,7 @@ export function scenery(scene: THREE.Scene, map: WorldMap) {
     [-5, 0, 14],
     [8.6, 0, 14.5],
   ]) {
-    const b = bench();
+    const b = kit.bench();
     b.position.set(x, y, z);
     scene.add(b);
   }
@@ -125,7 +126,7 @@ export function scenery(scene: THREE.Scene, map: WorldMap) {
     [-3, 0, 7.7],
     [6.8, 0, 14.5],
   ]) {
-    const p = planter();
+    const p = kit.planter();
     p.position.set(x, y, z);
     scene.add(p);
   }

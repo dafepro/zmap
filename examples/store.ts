@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
   finite,
+  validateDurableState,
   placementError,
   validId,
   validVec,
@@ -28,15 +29,7 @@ export class ExampleStore implements DurableStore {
       const state = JSON.parse(
         await readFile(join(this.directory, `${room}.json`), "utf8"),
       ) as DurableState;
-      if (
-        state.version !== 1 ||
-        state.mapId !== map.id ||
-        !Array.isArray(state.items) ||
-        state.items.length > 50 ||
-        !state.receipts ||
-        !Number.isSafeInteger(state.revision)
-      )
-        throw Error("Saved room needs migration");
+      validateDurableState(state, map);
       return state;
     } catch (error: any) {
       if (error.code !== "ENOENT") throw error;

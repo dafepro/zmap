@@ -1,7 +1,7 @@
 import "./style.css";
 import type { Zoomap, Placement, EditCommand } from "zmap";
 import { courtyard, catalog, identities } from "../content";
-import { character, decoration, ball } from "../characters";
+import { loadModelKit } from "../models";
 import { scenery } from "../scenery";
 const params = new URLSearchParams(location.search);
 const mode = ["explore", "shared", "decorate"].includes(
@@ -224,14 +224,28 @@ async function save(remove = false) {
     if (preview) updatePreview();
   }
 }
+let mountGeneration = 0;
 async function mount() {
+  const generation = ++mountGeneration;
+  updateStatus("connecting");
+  el<HTMLButtonElement>("rejoin").disabled = true;
   try {
-    const { Zoomap } = await import("zmap");
+    el("status").textContent = "Loading model kit…";
+    const [{ Zoomap }, kit] = await Promise.all([
+      import("zmap"),
+      loadModelKit(),
+    ]);
+    if (generation !== mountGeneration) return;
     world = new Zoomap({
       container: el("world"),
       map: courtyard,
       catalog,
-      visuals: { character, decoration, toy: ball, scenery },
+      visuals: {
+        character: kit.character,
+        decoration: kit.decoration,
+        toy: kit.ball,
+        scenery: (scene, map) => scenery(scene, map, kit),
+      },
       onStatus: updateStatus,
       onChange: refresh,
     });
@@ -246,13 +260,18 @@ async function mount() {
       } else world!.view.canvas.focus();
     });
     await enter();
+    if (generation !== mountGeneration) return;
     // Deliberately exposed sample diagnostics for reproducible integration tests, never an authority seam.
     (window as any).zoomapExample = { world, actor, mode };
   } catch (error) {
+    if (generation !== mountGeneration) return;
     updateStatus(
       "failed",
       `The world could not start: ${(error as Error).message}`,
     );
+  } finally {
+    if (generation === mountGeneration)
+      el<HTMLButtonElement>("rejoin").disabled = false;
   }
 }
 async function enter() {
@@ -268,10 +287,13 @@ el("rejoin").onclick = () =>
     ? void enter().catch((error) => updateStatus("failed", error.message))
     : void mount();
 el("leave").onclick = () => {
+  mountGeneration++;
   if (preview) cancel();
   world?.dispose();
   world = undefined;
   el("world").replaceChildren();
+  updateStatus("left");
+  el<HTMLButtonElement>("rejoin").disabled = false;
 };
 el("recenter").onclick = () => world?.view.canvas.focus();
 el("kick").onclick = () => world?.action("kick");

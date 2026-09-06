@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { writeFile } from "node:fs/promises";
+import { platform, release, arch } from "node:os";
 async function ready(page: Page, path: string) {
   await page.goto(path);
   await expect(page.locator("#status")).toHaveText("Live together");
@@ -15,9 +17,38 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
   const host = await context.newPage();
   const errors: string[] = [];
   host.on("pageerror", (e) => errors.push(e.message));
-  await ready(host, "http://127.0.0.1:5173/?mode=shared&as=ari");
+  await ready(host, "http://127.0.0.1:5174/?mode=shared&as=ari");
+  await host.waitForTimeout(6000);
+  const sample = await host.evaluate(() => {
+    const w = (window as any).zoomapExample.world;
+    return {
+      joinMs: w.joinMs,
+      render: w.view.diagnostics(),
+      traffic: w.traffic,
+      players: w.roster.length,
+      epoch: w.epoch,
+    };
+  });
+  await writeFile(
+    "docs/evidence/desktop-sample.json",
+    JSON.stringify(
+      {
+        date: new Date().toISOString(),
+        platform: platform(),
+        release: release(),
+        arch: arch(),
+        browser: browser.version(),
+        viewport: "1440×1050",
+        method:
+          "One headless desktop run against Vite development server, six seconds after ready, one avatar with Blender model kit. Join timing begins after asset loading. Not cold-entry, full-room or physical-phone qualification.",
+        ...sample,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
   const peer = await context.newPage();
-  await ready(peer, "http://127.0.0.1:5173/?mode=shared&as=sam");
+  await ready(peer, "http://127.0.0.1:5174/?mode=shared&as=sam");
   await expect(host.locator("#count")).toHaveText("2 / 20");
   const start = await host.evaluate(() => {
     const w = (window as any).zoomapExample.world;
@@ -44,7 +75,7 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
   }));
   expect(after.x).toBeGreaterThan(before.x + 0.7);
   const late = await context.newPage();
-  await ready(late, "http://127.0.0.1:5173/?mode=shared&as=jo");
+  await ready(late, "http://127.0.0.1:5174/?mode=shared&as=jo");
   await expect(late.locator("#count")).toHaveText("3 / 20");
   expect(
     await late.evaluate(() => {
@@ -113,7 +144,7 @@ test("portrait: touch movement, interruption stops input, readable layout", asyn
     reducedMotion: "reduce",
   });
   const page = await context.newPage();
-  await ready(page, "http://127.0.0.1:5173/?mode=explore&as=jo");
+  await ready(page, "http://127.0.0.1:5174/?mode=explore&as=jo");
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
@@ -176,4 +207,51 @@ test("20 enter/dispose cycles release connections and canvases; isolated input f
   console.log(
     `20 lifecycle cycles: geometries ${first.geometries} → ${final.geometries}; textures ${first.textures} → ${final.textures}`,
   );
+});
+test("missing model fails explicitly, and retry loads the real kit once", async ({
+  page,
+}) => {
+  let failing = true;
+  await page.route("**/models/athlete-v1.glb", (route) =>
+    failing
+      ? route.fulfill({ status: 503, body: "Unavailable" })
+      : route.continue(),
+  );
+  await page.goto("/?mode=explore&as=ari");
+  await expect(page.locator("#status")).toHaveText("Unable to enter");
+  await expect(page.locator("#message-detail")).toContainText("athlete-v1");
+  await expect(page.locator("#world canvas")).toHaveCount(0);
+  failing = false;
+  await page.getByRole("button", { name: /Enter courtyard/ }).click();
+  await expect(page.locator("#status")).toHaveText("Live together");
+  await expect(page.locator("#world canvas")).toHaveCount(1);
+  await expect(page.locator("#count")).toHaveText("1 / 20");
+});
+test("leaving during asset load cannot mount a late world", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const held = new Promise<void>((r) => {
+    release = r;
+  });
+  let intercepted!: () => void;
+  const started = new Promise<void>((r) => {
+    intercepted = r;
+  });
+  await page.route("**/models/athlete-v1.glb", async (route) => {
+    intercepted();
+    await held;
+    await route.continue();
+  });
+  await page.goto("/?mode=explore&as=ari");
+  await started;
+  await page.getByRole("button", { name: /Leave courtyard/ }).click();
+  const loaded = page.waitForResponse("**/models/athlete-v1.glb");
+  release();
+  await loaded;
+  await expect(page.locator("#status")).toHaveText("See you soon");
+  await expect(page.locator("#world canvas")).toHaveCount(0);
+  await page.getByRole("button", { name: /Enter courtyard/ }).click();
+  await expect(page.locator("#status")).toHaveText("Live together");
+  await expect(page.locator("#world canvas")).toHaveCount(1);
 });

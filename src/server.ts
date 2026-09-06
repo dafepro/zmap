@@ -9,6 +9,7 @@ import {
   validSimulation,
   validateMap,
   validateCatalog,
+  validateDurableState,
   type WorldMap,
   type ItemType,
   type Identity,
@@ -38,6 +39,7 @@ export type ServiceOptions = {
   leaseMs?: number;
   capacity?: number;
   allowedOrigins?: string[];
+  adapterTimeoutMs?: number;
 };
 type Peer = {
   id: string;
@@ -64,6 +66,7 @@ export function createRoomService(options: ServiceOptions) {
     maxPayload: 65536,
   });
   const rooms = new Map<string, Room>();
+  const loadingRooms = new Set<string>();
   const metrics = {
     inboundBytes: 0,
     outboundBytes: 0,
@@ -72,12 +75,53 @@ export function createRoomService(options: ServiceOptions) {
     rejected: 0,
     commits: 0,
   };
-  let work = Promise.resolve();
   let closing = false;
-  const queue = (fn: () => Promise<void> | void) => {
-    work = work.then(fn).catch(() => {
-      metrics.rejected++;
-    });
+  const lanes = new Map<string, { tail: Promise<void>; pending: number }>();
+  const timeoutMs = options.adapterTimeoutMs ?? 2000;
+  async function readAdapter<T>(work: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        work,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(
+            () => reject(Error("App service timed out")),
+            timeoutMs,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  const queue = (
+    key: string,
+    fn: () => Promise<void> | void,
+    critical = false,
+  ) => {
+    let lane = lanes.get(key);
+    if (!lane) {
+      lane = { tail: Promise.resolve(), pending: 0 };
+      lanes.set(key, lane);
+    }
+    if (lane.pending >= 64 && !critical) return false;
+    lane.pending++;
+    const current = lane;
+    lane.tail = lane.tail
+      .then(fn)
+      .catch(() => {
+        metrics.rejected++;
+      })
+      .finally(() => {
+        current.pending--;
+        if (!current.pending) lanes.delete(key);
+      });
+    return true;
+  };
+  const load = async (id: string) => {
+    const state = await readAdapter(options.store.load(id, options.map));
+    validateDurableState(state, options.map, options.catalog);
+    return state;
   };
   const send = (ws: WebSocket, message: unknown) => {
     if (ws.readyState !== WebSocket.OPEN) return;
@@ -137,6 +181,8 @@ export function createRoomService(options: ServiceOptions) {
       return;
     }
     let room: Room | undefined, peer: Peer | undefined;
+    let queueKey = `connection:${randomUUID()}`,
+      requestedRoom: string | undefined;
     let count = 0,
       windowAt = Date.now();
     const joinTimeout = setTimeout(() => {
@@ -160,7 +206,15 @@ export function createRoomService(options: ServiceOptions) {
         ws.close(4400, "Invalid JSON");
         return;
       }
-      queue(async () => {
+      if (!peer && message?.type === "join" && validId(message.room)) {
+        if (requestedRoom && requestedRoom !== message.room) {
+          ws.close(4400, "Conflicting join");
+          return;
+        }
+        requestedRoom = message.room;
+        queueKey = `room:${message.room}`;
+      }
+      const queued = queue(queueKey, async () => {
         if (ws.readyState !== WebSocket.OPEN || closing) return;
         try {
           if (!peer) {
@@ -172,24 +226,31 @@ export function createRoomService(options: ServiceOptions) {
               message.credential.length > 2048
             )
               throw Error("Invalid join");
-            const identity = await options.authenticate(
-              message.credential,
-              message.room,
+            const identity = await readAdapter(
+              options.authenticate(message.credential, message.room),
             );
             if (
               !identity ||
               !validId(identity.id) ||
-              !(await options.canAccess(identity, message.room))
+              !(await readAdapter(options.canAccess(identity, message.room)))
             ) {
               ws.close(4403, "Access denied");
               return;
             }
             room = rooms.get(message.room);
             if (!room) {
-              if (rooms.size >= 100) {
+              if (rooms.size + loadingRooms.size >= 100) {
                 ws.close(4429, "Service full");
                 return;
               }
+              loadingRooms.add(message.room);
+              let durable: DurableState;
+              try {
+                durable = await load(message.room);
+              } finally {
+                loadingRooms.delete(message.room);
+              }
+              if (closing || ws.readyState !== WebSocket.OPEN) return;
               room = {
                 id: message.room,
                 peers: new Map(),
@@ -197,7 +258,7 @@ export function createRoomService(options: ServiceOptions) {
                 epoch: 0,
                 lastSnapshot: Date.now(),
                 state: initialSimulation(options.map),
-                durable: await options.store.load(message.room, options.map),
+                durable,
               };
               rooms.set(room.id, room);
             }
@@ -239,7 +300,7 @@ export function createRoomService(options: ServiceOptions) {
             return;
           }
           if (!room || !room.peers.has(peer.id)) return;
-          if (!(await options.canAccess(peer.identity, room.id))) {
+          if (!(await readAdapter(options.canAccess(peer.identity, room.id)))) {
             ws.close(4403, "Access expired");
             depart(room, peer);
             return;
@@ -318,6 +379,7 @@ export function createRoomService(options: ServiceOptions) {
               options.map,
               options.catalog,
             );
+            validateDurableState(next, options.map, options.catalog);
             room.durable = next;
             metrics.commits++;
             broadcast(room, { type: "durable", durable: layout(next) });
@@ -342,41 +404,48 @@ export function createRoomService(options: ServiceOptions) {
           });
         }
       });
+      if (!queued) ws.close(4429, "Room queue full");
     });
     ws.on("close", () => {
       clearTimeout(joinTimeout);
-      queue(() => {
-        if (room && peer) depart(room, peer);
-      });
+      queue(
+        queueKey,
+        () => {
+          if (room && peer) depart(room, peer);
+        },
+        true,
+      );
     });
   });
-  const timer = setInterval(
-    () =>
-      queue(async () => {
-        if (closing) return;
-        for (const room of rooms.values()) {
-          for (const peer of room.peers.values()) {
+  const timer = setInterval(() => {
+    if (closing) return;
+    for (const room of rooms.values())
+      queue(`room:${room.id}`, async () => {
+        for (const peer of room.peers.values()) {
+          try {
             if (
               Date.now() - peer.seen > 8000 ||
-              !(await options.canAccess(peer.identity, room.id))
+              !(await readAdapter(options.canAccess(peer.identity, room.id)))
             ) {
               peer.ws.close(4403, "Session expired");
               depart(room, peer);
             }
-          }
-          if (
-            room.host &&
-            Date.now() - room.lastSnapshot > (options.leaseMs ?? 2400)
-          ) {
-            const old = room.peers.get(room.host);
-            if (old) old.eligible = false;
-            elect(room);
-            broadcast(room, metadata(room));
+          } catch {
+            peer.ws.close(1013, "App service unavailable");
+            depart(room, peer);
           }
         }
-      }),
-    250,
-  );
+        if (
+          room.host &&
+          Date.now() - room.lastSnapshot > (options.leaseMs ?? 2400)
+        ) {
+          const old = room.peers.get(room.host);
+          if (old) old.eligible = false;
+          elect(room);
+          broadcast(room, metadata(room));
+        }
+      });
+  }, 250);
   return {
     metrics,
     diagnostics: () => ({
@@ -388,7 +457,12 @@ export function createRoomService(options: ServiceOptions) {
       closing = true;
       clearInterval(timer);
       for (const ws of wss.clients) ws.terminate();
-      await work;
+      // Durable writes cannot be safely cancelled; shutdown bounds waiting, never acknowledges an unknown outcome.
+      try {
+        await readAdapter(
+          Promise.allSettled([...lanes.values()].map((l) => l.tail)),
+        );
+      } catch {}
       await new Promise<void>((resolve) => wss.close(() => resolve()));
     },
   };

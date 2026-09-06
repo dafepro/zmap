@@ -1,3 +1,4 @@
+import { SnapshotPresentation } from "./presentation.js";
 import {
   STEP,
   idleInput,
@@ -63,6 +64,7 @@ export class Zoomap {
   private stopped = true;
   private disposed = false;
   private generation = 0;
+  private presentation = new SnapshotPresentation();
   private joining?: {
     resolve: () => void;
     reject: (error: Error) => void;
@@ -189,6 +191,8 @@ export class Zoomap {
     if (this.disposed) throw Error("World disposed");
     this.leave();
     this.address = address;
+    this.view.reset();
+    this.presentation.reset();
     this.stopped = false;
     this.started = performance.now();
     this.setStatus("connecting");
@@ -236,6 +240,8 @@ export class Zoomap {
           this.epoch = m.epoch;
           this.roster = m.roster;
           this.state = m.state;
+          this.presentation.reset();
+          this.presentation.push(this.state, performance.now());
           this.durable = m.durable;
           this.local = this.state.players[this.session]
             ? { ...this.state.players[this.session] }
@@ -264,6 +270,7 @@ export class Zoomap {
           this.lastStateAt = performance.now();
           if (this.host !== this.session) {
             this.state = m.state;
+            this.presentation.push(this.state, performance.now());
             const authoritative = this.state.players[this.session];
             if (authoritative && this.local) {
               const error = Math.hypot(
@@ -436,7 +443,9 @@ export class Zoomap {
     } else this.accumulator = 0;
     if (this.local)
       this.view.render(
-        this.state,
+        this.host === this.session
+          ? this.state
+          : (this.presentation.sample(time) ?? this.state),
         this.roster,
         this.session,
         this.local,
@@ -475,6 +484,7 @@ export class Zoomap {
   leave() {
     this.generation++;
     this.stopped = true;
+    this.presentation.reset();
     cancelAnimationFrame(this.frame);
     clearTimeout(this.retry);
     this.clearInput();

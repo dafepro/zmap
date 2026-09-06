@@ -140,3 +140,31 @@ test("concurrent inventory claims, invalid support, protected routes and missing
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("corrupted persisted owners, duplicate IDs and malformed receipts fail closed", async () => {
+  const { writeFile } = await import("node:fs/promises");
+  const dir = await mkdtemp(join(tmpdir(), "zmap-corruption-"));
+  const store = new ExampleStore(dir, () => true);
+  try {
+    const valid = await store.commit(
+      "test",
+      identities.ari,
+      command(),
+      courtyard,
+      catalog,
+    );
+    for (const corrupt of [
+      { ...valid, items: [{ ...valid.items[0], owner: null }] },
+      { ...valid, items: [valid.items[0], valid.items[0]] },
+      {
+        ...valid,
+        receipts: { "ari:broken": { fingerprint: "invalid", revision: 1 } },
+      },
+    ]) {
+      await writeFile(join(dir, "test.json"), JSON.stringify(corrupt));
+      await assert.rejects(store.load("test", courtyard), /invalid/);
+    }
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
