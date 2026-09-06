@@ -2,11 +2,9 @@
 
 Read `docs/intent.md`, `docs/specs.md`, and `docs/astra-handoff.md` before planning or implementing product work. Treat them as product context; follow the current user request for the work to perform.
 
-If `agents.local.md` exists, read it for local machine or developer notes. It is intentionally ignored and must not contain product requirements that other contributors need.
+If `~/.codex/project-instructions/zmap/AGENTS.local.md` exists, read it before doing any work. It contains machine-local guidance shared by this repository's local worktrees and must not be copied into the repository.
 
 Use `zmap` for the repository and package name. Use “Zoomap” only as the user-facing product name unless the product docs change.
-
-Use the `dafepro` GitHub credentials for repository commits and pushes.
 
 Keep Zoomap reusable and independent of Zoomigo business logic. Preserve the trust boundary in the product brief: the integrating app owns identity, access, inventory, rewards, and durable policy.
 
