@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import type { Body, Character, Identity, Placement } from "zmap";
+import {
+  AvatarLibrary,
+  defaultRecipe,
+  type AvatarInstance,
+} from "@zoomap/avatar-studio";
+import type { Character, Identity, Placement } from "zmap";
 import { box } from "./characters";
-const names = [
-  "athlete-v1",
-  "match-ball-v1",
-  "bench-v1",
-  "planter-v1",
-] as const;
+const names = ["match-ball-v1", "bench-v1", "planter-v1"] as const;
 type ModelName = (typeof names)[number];
 let templates: Promise<Map<ModelName, THREE.Group>> | undefined;
 function loadTemplates() {
@@ -54,29 +54,11 @@ export async function loadModelKit() {
     });
     return object;
   }
+  const appearances = await loadAppearances();
   function character(identity: Identity): Character {
-    const object = instance("athlete-v1");
-    const palette = (
-      {
-        burgundy: ["#70263d", "#c88d65", "#30251e"],
-        saffron: ["#db923e", "#855638", "#211f21"],
-        sage: ["#648570", "#edba8a", "#8d5534"],
-      } as Record<string, string[]>
-    )[identity.appearance];
-    if (!palette) throw Error("Unknown approved appearance");
-    object.traverse((o) => {
-      if (o instanceof THREE.Mesh)
-        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
-          const index = ["kit", "skin", "hair"].indexOf(m.name);
-          if (index >= 0)
-            (m as THREE.MeshStandardMaterial).color.set(palette[index]);
-        }
-    });
-    const pivots = ["leg_L", "leg_R", "arm_L", "arm_R", "head"].map((name) => {
-      const pivot = object.getObjectByName(name);
-      if (!pivot) throw Error(`Athlete is missing ${name}`);
-      return pivot;
-    });
+    const create = appearances.get(identity.appearance);
+    if (!create) throw Error("Unknown approved appearance");
+    const avatar = create();
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(0.4, 24),
       new THREE.MeshBasicMaterial({
@@ -88,29 +70,10 @@ export async function loadModelKit() {
     );
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.008;
-    object.add(shadow);
-    let phase = 0,
-      lastTime: number | undefined;
-    return {
-      object,
-      update(body: Body, time: number) {
-        const dt =
-          lastTime === undefined
-            ? 0
-            : Math.max(0, Math.min(0.1, time - lastTime));
-        lastTime = time;
-        const speed = Math.min(1, Math.hypot(body.vx, body.vz) / 4);
-        phase += dt * 10.5 * speed;
-        const swing = Math.sin(phase) * 0.42 * speed;
-        pivots[0].rotation.x = swing;
-        pivots[1].rotation.x = -swing;
-        pivots[2].rotation.x = -swing * 0.7;
-        pivots[3].rotation.x = body.gesture > 0 ? -2.5 : swing * 0.7;
-        pivots[3].rotation.z =
-          body.gesture > 0 ? 0.25 + Math.sin(time * 13) * 0.12 : 0;
-        pivots[4].rotation.z = Math.sin(time * 2) * 0.012;
-      },
-    };
+    avatar.object.add(shadow);
+    return avatar.asCharacter(
+      () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
   }
   function decoration(p: Placement) {
     if (p.type === "planter") return instance("planter-v1");
@@ -128,4 +91,84 @@ export async function loadModelKit() {
     bench: () => instance("bench-v1"),
     planter: () => instance("planter-v1"),
   };
+}
+
+// App policy maps an identity's approved appearance to a recipe. ZMap only sees Character.
+// Preloading makes its synchronous visual factory deterministic, with no partial avatars.
+let appearances: Promise<Map<string, () => AvatarInstance>> | undefined;
+function loadAppearances() {
+  return (appearances ??= (async () => {
+    const base = new URL(`${import.meta.env.BASE_URL}avatars/`, location.href);
+    const response = await fetch(new URL("catalog.json", base), {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok)
+      throw Error(`Avatar collection could not load (${response.status})`);
+    const library = new AvatarLibrary(await response.json(), base.href);
+    try {
+      const choices = [
+        {
+          id: "burgundy",
+          hair: "hair-sweep",
+          shirt: "shirt-jersey",
+          face: "face-focus",
+          skin: "#c68b60",
+          primary: "#782e43",
+          hairColor: "#312821",
+        },
+        {
+          id: "saffron",
+          hair: "hair-curls",
+          shirt: "shirt-hoodie",
+          face: "face-grin",
+          skin: "#855538",
+          primary: "#d29339",
+          hairColor: "#171d23",
+        },
+        {
+          id: "sage",
+          hair: "hair-pony",
+          shirt: "shirt-track",
+          face: "face-wink",
+          skin: "#edc39d",
+          primary: "#496d65",
+          hairColor: "#c89144",
+        },
+      ];
+      const results = await Promise.allSettled(
+        choices.map(async (look) => {
+          const recipe = defaultRecipe(library.catalog);
+          Object.assign(recipe.parts, {
+            hair: look.hair,
+            shirt: look.shirt,
+            face: look.face,
+          });
+          recipe.colors = {
+            skin: look.skin,
+            primary: look.primary,
+            hair: look.hairColor,
+          };
+          return [look.id, await library.prepare(recipe)] as const;
+        }),
+      );
+      const failure = results.find((r) => r.status === "rejected");
+      if (failure?.status === "rejected") throw failure.reason;
+      return new Map(
+        results.map(
+          (r) =>
+            (
+              r as PromiseFulfilledResult<
+                readonly [string, () => AvatarInstance]
+              >
+            ).value,
+        ),
+      );
+    } catch (error) {
+      library.dispose();
+      throw error;
+    }
+  })().catch((error) => {
+    appearances = undefined;
+    throw error;
+  }));
 }

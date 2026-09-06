@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 export default defineConfig({
   root: "examples/hub",
+  // The linked standalone studio has its own dev install; both consumers must share Three.
+  resolve: { dedupe: ["three"] },
   server: {
     port: Number(process.env.ZMAP_PORT ?? 5173),
     strictPort: true,

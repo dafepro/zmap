@@ -17,6 +17,10 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
   const host = await context.newPage();
   const errors: string[] = [];
   host.on("pageerror", (e) => errors.push(e.message));
+  host.on("console", (message) => {
+    if (/Multiple instances of Three/.test(message.text()))
+      errors.push(message.text());
+  });
   await ready(host, "http://127.0.0.1:5174/?mode=shared&as=ari");
   await host.waitForTimeout(6000);
   const sample = await host.evaluate(() => {
@@ -212,14 +216,14 @@ test("missing model fails explicitly, and retry loads the real kit once", async 
   page,
 }) => {
   let failing = true;
-  await page.route("**/models/athlete-v1.glb", (route) =>
+  await page.route("**/avatars/models/head-scout.glb", (route) =>
     failing
       ? route.fulfill({ status: 503, body: "Unavailable" })
       : route.continue(),
   );
   await page.goto("/?mode=explore&as=ari");
   await expect(page.locator("#status")).toHaveText("Unable to enter");
-  await expect(page.locator("#message-detail")).toContainText("athlete-v1");
+  await expect(page.locator("#message-detail")).toContainText("Scout");
   await expect(page.locator("#world canvas")).toHaveCount(0);
   failing = false;
   await page.getByRole("button", { name: /Enter courtyard/ }).click();
@@ -238,7 +242,7 @@ test("leaving during asset load cannot mount a late world", async ({
   const started = new Promise<void>((r) => {
     intercepted = r;
   });
-  await page.route("**/models/athlete-v1.glb", async (route) => {
+  await page.route("**/avatars/models/head-scout.glb", async (route) => {
     intercepted();
     await held;
     await route.continue();
@@ -246,7 +250,7 @@ test("leaving during asset load cannot mount a late world", async ({
   await page.goto("/?mode=explore&as=ari");
   await started;
   await page.getByRole("button", { name: /Leave courtyard/ }).click();
-  const loaded = page.waitForResponse("**/models/athlete-v1.glb");
+  const loaded = page.waitForResponse("**/avatars/models/head-scout.glb");
   release();
   await loaded;
   await expect(page.locator("#status")).toHaveText("See you soon");

@@ -345,3 +345,43 @@ test("concurrent room loads reserve capacity before awaiting the store", async (
     await new Promise<void>((r) => http.close(() => r()));
   }
 });
+
+test("the default 20-player room accepts exactly 20 distinct identities and rejects a 21st", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "zmap-full-team-"));
+  const http = createServer();
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    store: new ExampleStore(dir, () => true),
+    authenticate: async (token) => ({
+      id: token,
+      name: token,
+      appearance: "sage",
+    }),
+    canAccess: async () => true,
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const url = `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`;
+  const clients = Array.from({ length: 20 }, (_, i) =>
+    connect(url, `player-${i}`),
+  );
+  try {
+    await Promise.all(clients.map((c) => c.wait("welcome")));
+    const full = await clients[0].wait("room", (m) => m.roster.length === 20);
+    assert.equal(new Set(full.roster.map((p: any) => p.identity.id)).size, 20);
+    const extra = connect(url, "player-21");
+    await new Promise<void>((r) =>
+      extra.ws.once("close", (code) => {
+        assert.equal(code, 4409);
+        r();
+      }),
+    );
+    assert.equal(service.diagnostics().peers, 20);
+  } finally {
+    for (const c of clients) c.ws.terminate();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});

@@ -73,3 +73,11 @@ The browser suite defaults to installed Google Chrome; set the environment varia
 - [Asset and dependency provenance](docs/provenance.md)
 
 Physical-phone qualification, representative full-room load, WAN fault/cost measurement and the actual Zoomigo adapter remain unfinished. This first playable is not a production-ready V1 replacement.
+
+## Modular avatar studio
+
+The independent [Avatar Studio](avatar-studio/README.md) provides 22 original Blender parts, a versioned appearance contract and an editor at `http://localhost:5180` (`npm --prefix avatar-studio ci`, then `npm --prefix avatar-studio run dev`). It includes a comic view with toon lighting, outlines and orthographic projection.
+
+The hub consumes the same package through approved prepared factories in `examples/models.ts`. `npm run dev` and `npm run typecheck` build that package and copy its catalog/models into the example's generated public assets. Application identity selects approved recipes; ZMap still receives only character visuals. The standalone studio builds and tests independently of the parent repository.
+
+See [multiplayer coverage](docs/multiplayer-coverage.md) for the tested functional boundaries, impaired-network method and the remaining full-room/device performance qualification.

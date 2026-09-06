@@ -6,3 +6,6 @@ playwright-report/
 .DS_Store
 lib/
 *.tgz
+
+# Generated from the independent avatar package for the hub consumer.
+examples/hub/public/avatars/
