@@ -109,6 +109,7 @@ function loadAppearances() {
       const choices = [
         {
           id: "burgundy",
+          weight: 0,
           hair: "hair-sweep",
           shirt: "shirt-jersey",
           face: "face-focus",
@@ -118,6 +119,7 @@ function loadAppearances() {
         },
         {
           id: "saffron",
+          weight: 0.55,
           hair: "hair-curls",
           shirt: "shirt-hoodie",
           face: "face-grin",
@@ -127,6 +129,7 @@ function loadAppearances() {
         },
         {
           id: "sage",
+          weight: -0.35,
           hair: "hair-pony",
           shirt: "shirt-track",
           face: "face-wink",
@@ -143,6 +146,7 @@ function loadAppearances() {
             shirt: look.shirt,
             face: look.face,
           });
+          recipe.body = { weight: look.weight };
           recipe.colors = {
             skin: look.skin,
             primary: look.primary,
