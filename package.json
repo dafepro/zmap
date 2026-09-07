@@ -25,7 +25,7 @@
     "dev": "concurrently -k 'tsx --conditions=development examples/server.ts' 'vite --host 0.0.0.0'",
     "build": "npm run typecheck && npm run build:lib && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --conditions=development --test tests/*.test.ts",
+    "test": "node --conditions=development --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "build:lib": "tsc -p tsconfig.lib.json",
     "prepack": "npm run build:lib",
@@ -50,7 +50,7 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
-    "@zoomap/avatar-studio": "file:./avatar-studio"
+    "@zmap/avatar-studio": "file:./avatar-studio"
   },
   "files": [
     "lib",

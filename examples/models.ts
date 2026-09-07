@@ -4,7 +4,7 @@ import {
   AvatarLibrary,
   defaultRecipe,
   type AvatarInstance,
-} from "@zoomap/avatar-studio";
+} from "@zmap/avatar-studio";
 import type { Character, Identity, Placement } from "zmap";
 import { box } from "./characters";
 const names = ["match-ball-v1", "bench-v1", "planter-v1"] as const;

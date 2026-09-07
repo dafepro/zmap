@@ -25,18 +25,29 @@ export const screenToWorld = (x: number, y: number) => ({
   z: (-x + y) / Math.SQRT2,
 });
 export function disposeObject(root: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  const skeletons = new Set<THREE.Skeleton>();
   root.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    mesh.geometry?.dispose();
-    if (mesh.material)
-      for (const material of Array.isArray(mesh.material)
-        ? mesh.material
-        : [mesh.material]) {
-        for (const value of Object.values(material))
-          if (value instanceof THREE.Texture) value.dispose();
-        material.dispose();
-      }
+    // Custom scenery may also contain lines, points or sprites.
+    const renderable = o as THREE.Mesh;
+    if (renderable.geometry) geometries.add(renderable.geometry);
+    if (renderable.material)
+      for (const material of Array.isArray(renderable.material)
+        ? renderable.material
+        : [renderable.material])
+        materials.add(material);
+    if (o instanceof THREE.SkinnedMesh) skeletons.add(o.skeleton);
   });
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) {
+    for (const value of Object.values(material))
+      if (value instanceof THREE.Texture) textures.add(value);
+    material.dispose();
+  }
+  for (const texture of textures) texture.dispose();
+  for (const skeleton of skeletons) skeleton.dispose();
 }
 export class WorldView {
   readonly scene = new THREE.Scene();
@@ -342,6 +353,9 @@ export class WorldView {
   dispose() {
     this.observer.disconnect();
     disposeObject(this.scene);
+    this.characters.clear();
+    this.toys.clear();
+    this.scene.clear();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
     this.canvas.remove();
