@@ -1,11 +1,11 @@
 {
-  "date": "2026-09-07T16:34:00.310Z",
+  "date": "2026-09-07T18:28:06.191Z",
   "browser": "152.0.7977.82",
   "clients": 3,
   "method": "Real browser clients, ordered application-message proxy, 75 ms per direction ±15 ms jitter; every 50th snapshot dropped. Not packet-level loss. One recovery sample, not p95. No full-room/phone claim.",
-  "recoveryMs": 129,
-  "localResponseSampleMs": 114,
+  "recoveryMs": 131,
+  "localResponseSampleMs": 113,
   "durableCommitsForRetriedCommand": 1,
   "dropped": 2,
-  "snapshotCount": 70
+  "snapshotCount": 73
 }
