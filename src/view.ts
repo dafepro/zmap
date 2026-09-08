@@ -12,7 +12,18 @@ import {
 } from "./core.js";
 export type Character = {
   object: THREE.Group;
-  update: (body: Body, time: number) => void;
+  update: (
+    body: Body,
+    time: number,
+    context?: {
+      session: string;
+      state: Simulation;
+      reducedMotion: boolean;
+      viewport: THREE.Vector2;
+    },
+  ) => void;
+  /** Release controllers/listeners as well as graphics. The view then removes the root. */
+  dispose?: () => void;
 };
 export type VisualOptions = {
   character?: (identity: Identity) => Character;
@@ -71,6 +82,7 @@ export class WorldView {
   private frameTimes: number[] = [];
   private lastFrame = 0;
   private toyPositions = new Map<string, Vec3>();
+  private viewport = new THREE.Vector2();
   constructor(
     readonly container: HTMLElement,
     readonly map: WorldMap,
@@ -190,7 +202,8 @@ export class WorldView {
     for (const [id, c] of this.characters)
       if (!ids.has(id)) {
         this.scene.remove(c.object);
-        disposeObject(c.object);
+        if (c.dispose) c.dispose();
+        else disposeObject(c.object);
         this.characters.delete(id);
       }
     for (const p of roster) {
@@ -218,7 +231,12 @@ export class WorldView {
       if (!b) continue;
       c.object.position.set(b.x, b.y, b.z);
       c.object.rotation.y = b.facing;
-      c.update(b, reducedMotion ? 0 : time / 1000);
+      c.update(b, reducedMotion ? 0 : time / 1000, {
+        session: p.session,
+        state,
+        reducedMotion,
+        viewport: this.renderer.getDrawingBufferSize(this.viewport),
+      });
     }
     for (const t of this.map.toys) {
       const b = state.toys[t.id],
@@ -352,6 +370,11 @@ export class WorldView {
   }
   dispose() {
     this.observer.disconnect();
+    for (const c of this.characters.values()) {
+      this.scene.remove(c.object);
+      if (c.dispose) c.dispose();
+      else disposeObject(c.object);
+    }
     disposeObject(this.scene);
     this.characters.clear();
     this.toys.clear();

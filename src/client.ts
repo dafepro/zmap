@@ -1,5 +1,11 @@
 import { SnapshotPresentation } from "./presentation.js";
 import {
+  validateActionIntent,
+  type ActionCommand,
+  type ActionIntent,
+  type ToolId,
+} from "./world-actions.js";
+import {
   STEP,
   idleInput,
   initialSimulation,
@@ -37,6 +43,7 @@ export type ClientOptions = {
   visuals?: VisualOptions;
   onStatus?: (status: ConnectionState, detail?: string) => void;
   onChange?: () => void;
+  onActionRejected?: (reason: string) => void;
 };
 export class Zoomap {
   readonly view: WorldView;
@@ -60,6 +67,11 @@ export class Zoomap {
   private input = idleInput();
   private inputs: Record<string, Input> = {};
   private inputAt: Record<string, number> = {};
+  private actionCommands: ActionCommand[] = [];
+  private actionSequence = 0;
+  private toolPressed = false;
+  private pendingAim?: { x: number; z: number };
+  private aimAt = 0;
   private disabled = false;
   private stopped = true;
   private disposed = false;
@@ -221,6 +233,9 @@ export class Zoomap {
         this.send({
           type: "join",
           version: 1,
+          ...(this.options.map.actionCatalog
+            ? { capabilities: ["actions-v1"] }
+            : {}),
           room: this.address!.room,
           credential,
         });
@@ -234,7 +249,12 @@ export class Zoomap {
           this.setStatus("failed", "Invalid room response");
           return;
         }
-        if (m.type === "welcome") this.session = m.session;
+        if (m.type === "welcome") {
+          this.session = m.session;
+          this.actionSequence = 0;
+          this.toolPressed = false;
+          this.pendingAim = undefined;
+        }
         if (m.type === "room") {
           this.host = m.host;
           this.epoch = m.epoch;
@@ -248,6 +268,8 @@ export class Zoomap {
             : undefined;
           this.inputs = {};
           this.inputAt = {};
+          this.actionCommands =
+            this.host === this.session ? (m.actionCommands ?? []) : [];
           this.lastStateAt = performance.now();
           this.view.render(
             this.state,
@@ -288,6 +310,18 @@ export class Zoomap {
         } else if (m.type === "input") {
           this.inputs[m.session] = m.input;
           this.inputAt[m.session] = performance.now();
+        } else if (
+          m.type === "action" &&
+          m.epoch === this.epoch &&
+          this.host === this.session
+        ) {
+          if (
+            !this.actionCommands.some(
+              (command) => command.sequence === m.command.sequence,
+            ) &&
+            m.command.sequence > (this.state.actions?.appliedSequence ?? 0)
+          )
+            this.actionCommands.push(m.command);
         } else if (m.type === "durable") this.durable = m.durable;
         else if (m.type === "saved") {
           const p = this.pending.get(m.id);
@@ -297,6 +331,8 @@ export class Zoomap {
             this.pending.delete(m.id);
           }
         } else if (m.type === "rejected") {
+          if (m.actionSequence !== undefined)
+            this.options.onActionRejected?.(String(m.reason));
           const p = this.pending.get(m.id);
           if (p) {
             clearTimeout(p.timer);
@@ -351,11 +387,67 @@ export class Zoomap {
   action(action: "kick" | "wave") {
     if (!this.disabled && this.status === "ready") this.input[action] = true;
   }
+  private submitAction(intent: ActionIntent) {
+    const catalog = this.options.map.actionCatalog;
+    if (!catalog) throw Error("This map has no shared tools");
+    validateActionIntent(intent, catalog);
+    if (this.status !== "ready" || this.socket?.readyState !== WebSocket.OPEN)
+      throw Error("Reconnect before using shared tools");
+    this.send({ type: "action", epoch: this.epoch, intent });
+  }
+  equipTool(tool: ToolId | null) {
+    this.submitAction({ sequence: ++this.actionSequence, kind: "equip", tool });
+    this.toolPressed = false;
+  }
+  useTool(pressed: boolean) {
+    if (typeof pressed !== "boolean") throw Error("Tool input must be boolean");
+    if (
+      this.disabled ||
+      this.status !== "ready" ||
+      !this.options.map.actionCatalog
+    )
+      return;
+    if (this.pendingAim) {
+      this.submitAction({
+        sequence: ++this.actionSequence,
+        kind: "aim",
+        ...this.pendingAim,
+      });
+      this.pendingAim = undefined;
+    }
+    if (pressed === this.toolPressed) return;
+    this.submitAction({
+      sequence: ++this.actionSequence,
+      kind: "use",
+      pressed,
+    });
+    this.toolPressed = pressed;
+  }
+  cancelTool() {
+    this.toolPressed = false;
+    if (
+      this.options.map.actionCatalog &&
+      this.status === "ready" &&
+      this.socket?.readyState === WebSocket.OPEN
+    )
+      this.submitAction({ sequence: ++this.actionSequence, kind: "cancel" });
+  }
+  /** World-space horizontal direction; actual targeting is resolved by shared simulation. */
+  setToolAim(x: number, z: number) {
+    if (!this.options.map.actionCatalog)
+      throw Error("This map has no shared tools");
+    if (!Number.isFinite(x) || !Number.isFinite(z) || Math.hypot(x, z) < 1e-6)
+      throw Error("Tool aim needs a finite nonzero direction");
+    const length = Math.hypot(x, z);
+    this.pendingAim = { x: x / length, z: z / length };
+  }
   setInputEnabled(enabled: boolean) {
     this.disabled = !enabled;
     this.clearInput();
   }
   private clearInput() {
+    this.pendingAim = undefined;
+    this.cancelTool();
     this.keys.clear();
     this.input = idleInput();
     this.send({ type: "input", input: this.input });
@@ -370,6 +462,7 @@ export class Zoomap {
       +(this.keys.has("w") || this.keys.has("arrowup"));
     return normalizeInput({
       ...this.input,
+      ...(this.options.map.actionCatalog ? { toolHeld: this.toolPressed } : {}),
       ...(x || y ? screenToWorld(x, y) : {}),
     });
   }
@@ -393,6 +486,15 @@ export class Zoomap {
     )
       this.setStatus("paused", "Recovering simulation host");
     if (this.status === "ready") {
+      if (this.pendingAim && time - this.aimAt >= 90) {
+        this.submitAction({
+          sequence: ++this.actionSequence,
+          kind: "aim",
+          ...this.pendingAim,
+        });
+        this.pendingAim = undefined;
+        this.aimAt = time;
+      }
       this.accumulator += elapsed;
       while (this.accumulator >= STEP) {
         const input = this.currentInput();
@@ -415,6 +517,11 @@ export class Zoomap {
             this.inputs,
             this.durable.items,
             this.options.catalog,
+            this.actionCommands,
+          );
+          this.actionCommands = this.actionCommands.filter(
+            (command) =>
+              command.sequence > (this.state.actions?.appliedSequence ?? 0),
           );
           for (const i of Object.values(this.inputs)) {
             i.kick = false;
@@ -437,6 +544,7 @@ export class Zoomap {
             STEP,
             this.durable.items,
             this.options.catalog,
+            this.state.actions?.players[this.session]?.impulse,
           );
         this.accumulator -= STEP;
       }
@@ -495,6 +603,8 @@ export class Zoomap {
       p.reject(Error("Left room; pending save outcome may be unknown"));
     }
     this.pending.clear();
+    this.actionCommands = [];
+    this.pendingAim = undefined;
     this.session = "";
     this.roster = [];
     this.host = null;

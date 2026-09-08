@@ -73,6 +73,7 @@ export class SnapshotPresentation {
       players: interpolate(a.state.players, b.state.players),
       toys: interpolate(a.state.toys, b.state.toys),
       triggers: { ...a.state.triggers },
+      ...(a.state.actions ? { actions: structuredClone(a.state.actions) } : {}),
     };
   }
 }

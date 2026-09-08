@@ -17,6 +17,7 @@ export default defineConfig({
     env: {
       ZMAP_PORT: "5174",
       ZMAP_RELAY_PORT: "8788",
+      ZMAP_ACTION_PORT: "8790",
       ZMAP_DATA_DIR: ".data/browser-tests",
     },
   },

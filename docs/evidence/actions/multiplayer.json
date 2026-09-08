@@ -1,0 +1,195 @@
+{
+  "provenance": "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
+  "recoveryMs": 116,
+  "pass": [
+    {
+      "kind": "reel",
+      "session": "13883549-c124-43f1-ad41-9fb59dc48571"
+    },
+    {
+      "kind": "pitch",
+      "session": "13883549-c124-43f1-ad41-9fb59dc48571"
+    },
+    {
+      "kind": "rebound",
+      "session": "26e6917e-aec5-4db7-9f65-344f6f5f84a0"
+    }
+  ],
+  "pulse": {
+    "id": 5,
+    "tick": 337,
+    "session": "13883549-c124-43f1-ad41-9fb59dc48571",
+    "tool": "wake-driver",
+    "kind": "pulse",
+    "position": {
+      "x": -2,
+      "y": 0.08,
+      "z": -2.4
+    }
+  },
+  "bytes": 1421,
+  "state": {
+    "tick": 357,
+    "players": {
+      "26e6917e-aec5-4db7-9f65-344f6f5f84a0": {
+        "x": -2.1540074749201095,
+        "y": 0,
+        "z": -1.4568857583344714,
+        "vx": -0.01946669611811486,
+        "vy": 0,
+        "vz": 0.11921056660849022,
+        "facing": -3.104740193174697,
+        "gesture": 0
+      },
+      "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae": {
+        "x": -2,
+        "y": 0,
+        "z": -3,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      }
+    },
+    "toys": {
+      "ball": {
+        "x": -2,
+        "y": 0.3154500000000001,
+        "z": 4.7716109393747,
+        "vx": 0,
+        "vy": 0.8280000000000018,
+        "vz": 8.803194631677984,
+        "facing": 0,
+        "gesture": 0
+      },
+      "blue-ball": {
+        "x": 4.5,
+        "y": 0,
+        "z": 1.5,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      },
+      "practice-ball": {
+        "x": -7,
+        "y": 0,
+        "z": 3,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      }
+    },
+    "triggers": {},
+    "actions": {
+      "version": 1,
+      "appliedSequence": 20,
+      "eventSequence": 5,
+      "players": {
+        "26e6917e-aec5-4db7-9f65-344f6f5f84a0": {
+          "tool": "rebound-panel",
+          "phase": "idle",
+          "held": false,
+          "aim": {
+            "x": 0,
+            "z": -1
+          },
+          "aimManual": true,
+          "cooldownUntil": 0,
+          "cooldowns": {
+            "tether-winch": 0,
+            "rebound-panel": 0,
+            "wake-driver": 0
+          },
+          "phaseUntil": 0,
+          "lastHeldTick": 264,
+          "target": null,
+          "sequence": 9,
+          "impulse": {
+            "x": -0.01946669611811486,
+            "z": 0.11921056660849022
+          },
+          "immuneUntil": 367
+        },
+        "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae": {
+          "tool": null,
+          "phase": "idle",
+          "held": false,
+          "aim": {
+            "x": 0,
+            "z": 1
+          },
+          "aimManual": false,
+          "cooldownUntil": 0,
+          "cooldowns": {
+            "tether-winch": 0,
+            "rebound-panel": 0,
+            "wake-driver": 0
+          },
+          "phaseUntil": 0,
+          "lastHeldTick": 0,
+          "target": null,
+          "sequence": 0,
+          "impulse": {
+            "x": 0,
+            "z": 0
+          },
+          "immuneUntil": 0
+        }
+      },
+      "events": []
+    }
+  },
+  "field": {
+    "characters": 2,
+    "readiness": [
+      {
+        "session": "26e6917e-aec5-4db7-9f65-344f6f5f84a0",
+        "desired": "rebound-panel",
+        "ready": true,
+        "pending": false,
+        "error": null
+      },
+      {
+        "session": "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae",
+        "desired": null,
+        "ready": true,
+        "pending": false,
+        "error": null
+      }
+    ],
+    "pending": 0,
+    "equipment": [
+      {
+        "state": "ready",
+        "visible": true,
+        "appearanceTriangles": 11262,
+        "heldTriangles": 1682,
+        "visibleTriangles": 8427,
+        "effectTriangles": 24,
+        "replacedTriangles": 2239,
+        "heldBytes": 127412,
+        "equippedHands": 2
+      },
+      {
+        "state": "ready",
+        "visible": true,
+        "appearanceTriangles": 10492,
+        "heldTriangles": 0,
+        "visibleTriangles": 8190,
+        "effectTriangles": 0,
+        "replacedTriangles": 0,
+        "heldBytes": 0,
+        "equippedHands": 0
+      }
+    ]
+  },
+  "traffic": {
+    "incoming": 268926,
+    "outgoing": 38624
+  }
+}

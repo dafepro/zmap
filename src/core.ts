@@ -1,4 +1,13 @@
 import { advanceToy } from "./toy-physics.js";
+import {
+  initialActionState,
+  stepActions,
+  validActionState,
+  validateActionCatalog,
+  type WorldActionCatalog,
+  type WorldActionState,
+  type ActionCommand,
+} from "./world-actions.js";
 /** Version 1 contracts: metres, Y-up, radians, fixed simulation seconds. */
 export type Vec3 = { x: number; y: number; z: number };
 export type Rect = { x: number; z: number; width: number; depth: number };
@@ -37,9 +46,16 @@ export type WorldMap = {
   triggers: Trigger[];
   placementZones: Rect[];
   protectedZones: Rect[];
+  actionCatalog?: WorldActionCatalog;
 };
 export type Identity = { id: string; name: string; appearance: string };
-export type Input = { x: number; z: number; kick: boolean; wave: boolean };
+export type Input = {
+  x: number;
+  z: number;
+  kick: boolean;
+  wave: boolean;
+  toolHeld?: boolean;
+};
 export type Body = Vec3 & {
   vx: number;
   vy: number;
@@ -52,6 +68,7 @@ export type Simulation = {
   players: Record<string, Body>;
   toys: Record<string, Body>;
   triggers: Record<string, number>;
+  actions?: WorldActionState;
 };
 export type ItemType = {
   id: string;
@@ -132,6 +149,7 @@ export function validateCatalog(catalog: ItemType[]) {
   }
 }
 export function validateMap(map: WorldMap) {
+  if (map.actionCatalog !== undefined) validateActionCatalog(map.actionCatalog);
   const rect = (r: Rect) =>
     r &&
     [r.x, r.z, r.width, r.depth].every(finite) &&
@@ -313,6 +331,9 @@ export function normalizeInput(input: Input): Input {
     z: z / length,
     kick: input?.kick === true,
     wave: input?.wave === true,
+    ...(typeof input?.toolHeld === "boolean"
+      ? { toolHeld: input.toolHeld }
+      : {}),
   };
 }
 export function movePlayer(
@@ -322,10 +343,11 @@ export function movePlayer(
   dt: number,
   items: Placement[] = [],
   catalog: ItemType[] = [],
+  impulse?: { x: number; z: number },
 ) {
   const i = normalizeInput(input);
-  body.vx = i.x * 4;
-  body.vz = i.z * 4;
+  body.vx = i.x * 4 + (impulse?.x ?? 0);
+  body.vz = i.z * 4 + (impulse?.z ?? 0);
   if (i.x || i.z) body.facing = Math.atan2(i.x, i.z);
   if (i.wave) body.gesture = 1.2;
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);
@@ -336,6 +358,7 @@ export function initialSimulation(map: WorldMap): Simulation {
     players: {},
     toys: Object.fromEntries(map.toys.map((t) => [t.id, bodyAt(t.home)])),
     triggers: Object.fromEntries(map.triggers.map((t) => [t.id, 0])),
+    ...(map.actionCatalog ? { actions: initialActionState() } : {}),
   };
 }
 export function stepWorld(
@@ -344,10 +367,20 @@ export function stepWorld(
   inputs: Record<string, Input>,
   items: Placement[] = [],
   catalog: ItemType[] = [],
+  commands: readonly ActionCommand[] = [],
 ) {
   state.tick++;
+  stepActions(map, state, inputs, commands, items, catalog);
   for (const [id, b] of Object.entries(state.players))
-    movePlayer(map, b, inputs[id] ?? idleInput(), STEP, items, catalog);
+    movePlayer(
+      map,
+      b,
+      inputs[id] ?? idleInput(),
+      STEP,
+      items,
+      catalog,
+      state.actions?.players[id]?.impulse,
+    );
   for (const t of map.toys) {
     const b = state.toys[t.id];
     for (const [id, p] of Object.entries(state.players)) {
@@ -484,7 +517,8 @@ export function validSimulation(
         finite(state.triggers[t.id]) &&
         state.triggers[t.id] >= 0 &&
         state.triggers[t.id] <= t.cooldown,
-    )
+    ) &&
+    validActionState(state.actions, map, playerIds, state.tick)
   );
 }
 

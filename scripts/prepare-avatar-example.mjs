@@ -6,3 +6,6 @@ await cp(new URL("catalog.json", source), new URL("catalog.json", destination));
 await cp(new URL("models/", source), new URL("models/", destination), {
   recursive: true,
 });
+await cp(new URL("action/", source), new URL("action/", destination), {
+  recursive: true,
+});

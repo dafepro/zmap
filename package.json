@@ -57,6 +57,7 @@
     "README.md",
     "docs/api.md",
     "docs/content.md",
-    "src"
+    "src",
+    "docs/field-tools.md"
   ]
 }

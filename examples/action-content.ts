@@ -1,0 +1,77 @@
+import { playfulActionCatalog, type WorldMap } from "zmap";
+
+/** This app supplies the room, approved tools and three ordinary movable props. */
+export const actionYard: WorldMap = {
+  version: 1,
+  id: "action-yard-v1",
+  bounds: { x: -12, z: -10, width: 24, depth: 24 },
+  spawn: { x: -2, y: 0, z: -3 },
+  surfaces: [
+    {
+      id: "yard",
+      x: -12,
+      z: -10,
+      width: 24,
+      depth: 24,
+      y: 0,
+      thickness: 0.3,
+      color: "#d6dbc9",
+      rollingResistance: 0.4,
+    },
+    {
+      id: "overpass",
+      x: -5,
+      z: 7,
+      width: 10,
+      depth: 2.4,
+      y: 2.8,
+      thickness: 0.3,
+      color: "#c9bda3",
+    },
+    {
+      id: "ramp",
+      x: -5,
+      z: 1,
+      width: 2,
+      depth: 6,
+      y: 0,
+      slope: 2.8 / 6,
+      thickness: 0.2,
+      color: "#c29c6e",
+    },
+  ],
+  blockers: [
+    { x: 1.8, z: -0.7, width: 0.35, depth: 4.7, y: 0, height: 1.7 },
+    { x: -9, z: 6, width: 1.7, depth: 0.6, y: 0, height: 1.2 },
+  ],
+  toys: [
+    {
+      id: "ball",
+      home: { x: -2, y: 0, z: 1.5 },
+      radius: 0.32,
+      color: "#c8794e",
+      sleep: "home",
+      restitution: 0.72,
+    },
+    {
+      id: "blue-ball",
+      home: { x: 4.5, y: 0, z: 1.5 },
+      radius: 0.4,
+      color: "#487b8a",
+      sleep: "home",
+      restitution: 0.7,
+    },
+    {
+      id: "practice-ball",
+      home: { x: -7, y: 0, z: 3 },
+      radius: 0.35,
+      color: "#d6b451",
+      sleep: "home",
+      restitution: 0.68,
+    },
+  ],
+  triggers: [],
+  placementZones: [],
+  protectedZones: [],
+  actionCatalog: playfulActionCatalog(),
+};

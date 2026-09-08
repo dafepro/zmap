@@ -2,6 +2,12 @@ import { randomUUID } from "node:crypto";
 import type { Server } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 import {
+  syncActionPlayers,
+  validateActionIntent,
+  type ActionCommand,
+  type PlayerActionState,
+} from "./world-actions.js";
+import {
   bodyAt,
   initialSimulation,
   normalizeInput,
@@ -47,6 +53,9 @@ type Peer = {
   ws: WebSocket;
   seen: number;
   eligible: boolean;
+  actionSequence: number;
+  actionWindowAt: number;
+  actionCount: number;
 };
 type Room = {
   id: string;
@@ -56,6 +65,9 @@ type Room = {
   lastSnapshot: number;
   state: Simulation;
   durable: DurableState;
+  actionSequence: number;
+  pendingActions: ActionCommand[];
+  actionCooldowns: Map<string, PlayerActionState["cooldowns"]>;
 };
 export function createRoomService(options: ServiceOptions) {
   validateMap(options.map);
@@ -153,6 +165,9 @@ export function createRoomService(options: ServiceOptions) {
     })),
     state: room.state,
     durable: layout(room.durable),
+    ...(options.map.actionCatalog
+      ? { actionCommands: room.pendingActions }
+      : {}),
   });
   const elect = (room: Room) => {
     room.host =
@@ -165,7 +180,20 @@ export function createRoomService(options: ServiceOptions) {
   };
   const depart = (room: Room, peer: Peer) => {
     if (!room.peers.delete(peer.id)) return;
+    const actions = room.state.actions?.players[peer.id];
+    if (actions) {
+      room.actionCooldowns.set(peer.identity.id, { ...actions.cooldowns });
+      for (const [id, cooldowns] of room.actionCooldowns)
+        if (Math.max(...Object.values(cooldowns)) <= room.state.tick)
+          room.actionCooldowns.delete(id);
+      while (room.actionCooldowns.size > 100)
+        room.actionCooldowns.delete(room.actionCooldowns.keys().next().value!);
+    }
     delete room.state.players[peer.id];
+    syncActionPlayers(room.state);
+    room.pendingActions = room.pendingActions.filter(
+      (command) => command.session !== peer.id,
+    );
     if (room.host === peer.id) elect(room);
     if (!room.peers.size) {
       room.state = initialSimulation(options.map);
@@ -226,6 +254,14 @@ export function createRoomService(options: ServiceOptions) {
               message.credential.length > 2048
             )
               throw Error("Invalid join");
+            if (
+              options.map.actionCatalog &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("actions-v1"))
+            ) {
+              ws.close(4400, "This map requires actions-v1");
+              return;
+            }
             const identity = await readAdapter(
               options.authenticate(message.credential, message.room),
             );
@@ -259,6 +295,9 @@ export function createRoomService(options: ServiceOptions) {
                 lastSnapshot: Date.now(),
                 state: initialSimulation(options.map),
                 durable,
+                actionSequence: 0,
+                pendingActions: [],
+                actionCooldowns: new Map(),
               };
               rooms.set(room.id, room);
             }
@@ -290,9 +329,16 @@ export function createRoomService(options: ServiceOptions) {
               ws,
               seen: Date.now(),
               eligible: true,
+              actionSequence: 0,
+              actionWindowAt: Date.now(),
+              actionCount: 0,
             };
             room.peers.set(peer.id, peer);
             room.state.players[peer.id] = bodyAt(options.map.spawn);
+            syncActionPlayers(room.state);
+            const cooldowns = room.actionCooldowns.get(peer.identity.id);
+            if (cooldowns && room.state.actions)
+              room.state.actions.players[peer.id].cooldowns = { ...cooldowns };
             if (!room.host) elect(room);
             clearTimeout(joinTimeout);
             send(ws, { type: "welcome", session: peer.id });
@@ -322,6 +368,29 @@ export function createRoomService(options: ServiceOptions) {
                 session: peer.id,
                 input: normalizeInput(message.input),
               });
+          } else if (message.type === "action") {
+            if (!options.map.actionCatalog || message.epoch !== room.epoch)
+              throw Error("Unavailable action catalog or stale action epoch");
+            validateActionIntent(message.intent, options.map.actionCatalog);
+            if (message.intent.sequence <= peer.actionSequence) return;
+            if (Date.now() - peer.actionWindowAt >= 1000) {
+              peer.actionWindowAt = Date.now();
+              peer.actionCount = 0;
+            }
+            if (++peer.actionCount > 24 || room.pendingActions.length >= 64)
+              throw Error("Action queue or rate limit exceeded");
+            if (room.actionSequence >= Number.MAX_SAFE_INTEGER)
+              throw Error("Action sequence exhausted");
+            peer.actionSequence = message.intent.sequence;
+            const command: ActionCommand = {
+              sequence: ++room.actionSequence,
+              session: peer.id,
+              intent: structuredClone(message.intent),
+            };
+            room.pendingActions.push(command);
+            const host = room.host ? room.peers.get(room.host) : undefined;
+            if (host)
+              send(host.ws, { type: "action", epoch: room.epoch, command });
           } else if (message.type === "snapshot") {
             if (
               room.host !== peer.id ||
@@ -329,7 +398,11 @@ export function createRoomService(options: ServiceOptions) {
               !validSimulation(message.state, options.map, [
                 ...room.peers.keys(),
               ]) ||
-              message.state.tick <= room.state.tick
+              message.state.tick <= room.state.tick ||
+              (options.map.actionCatalog &&
+                (message.state.actions.appliedSequence <
+                  room.state.actions!.appliedSequence ||
+                  message.state.actions.appliedSequence > room.actionSequence))
             )
               throw Error("Stale authority or invalid snapshot");
             // Copy only protocol fields; arbitrary nested host payload never reaches peers.
@@ -363,7 +436,16 @@ export function createRoomService(options: ServiceOptions) {
                   message.state.triggers[t.id],
                 ]),
               ),
+              ...(options.map.actionCatalog
+                ? { actions: structuredClone(message.state.actions) }
+                : {}),
             };
+            if (room.state.actions) {
+              const applied = room.state.actions.appliedSequence;
+              room.pendingActions = room.pendingActions.filter(
+                (command) => command.sequence > applied,
+              );
+            }
             room.lastSnapshot = Date.now();
             metrics.snapshots++;
             broadcast(room, {
@@ -393,6 +475,9 @@ export function createRoomService(options: ServiceOptions) {
           metrics.rejected++;
           send(ws, {
             type: "rejected",
+            ...(message?.type === "action"
+              ? { actionSequence: message.intent?.sequence }
+              : {}),
             id:
               typeof message?.command?.id === "string"
                 ? message.command.id.slice(0, 80)

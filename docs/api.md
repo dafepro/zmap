@@ -25,6 +25,8 @@ Import `Zoomap` from `zmap`. Construct it with `{ container, map, catalog, visua
 
 Movement keys are captured only on the world canvas. `setInput(x, y)` takes screen-relative axes for a touch controller; `action('kick' | 'wave')` sends a bounded action. `setInputEnabled(false)` clears held input for menus. Blur, visibility loss and interrupted pointer control stop movement. Pointer capture for custom touch UI is the consumer's responsibility; see the hub implementation.
 
+Maps can opt into `actionCatalog: playfulActionCatalog()` for the three implemented field actions. `equipTool(id | null)`, `setToolAim(x,z)`, `useTool(pressed)` and `cancelTool()` send ordered, bounded intents; `onActionRejected` reports rejection. See [shared field actions](field-tools.md) for capability negotiation, host replay and cooldown rules. Optional `Character.update(body,time,context)` context supplies session, display state, reduced-motion preference and viewport; `Character.dispose()` releases owned controllers and graphics on removal.
+
 Read `roster`, `local`, `state`, `durable`, `session`, `host`, `epoch`, `traffic`, and `joinMs` for presentation/diagnostics. Treat snapshots as read-only in consuming code. `onChange` reports room, durable edit and result changes; it is deliberately not a render-frequency callback.
 
 ## Decorating
