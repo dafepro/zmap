@@ -1,24 +1,24 @@
 {
   "provenance": "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
-  "recoveryMs": 116,
+  "recoveryMs": 134,
   "pass": [
     {
       "kind": "reel",
-      "session": "13883549-c124-43f1-ad41-9fb59dc48571"
+      "session": "3db7a4be-2511-42c6-ac5c-28be631f414d"
     },
     {
       "kind": "pitch",
-      "session": "13883549-c124-43f1-ad41-9fb59dc48571"
+      "session": "3db7a4be-2511-42c6-ac5c-28be631f414d"
     },
     {
       "kind": "rebound",
-      "session": "26e6917e-aec5-4db7-9f65-344f6f5f84a0"
+      "session": "e18ca083-f691-4a3a-84fe-d5497725b92c"
     }
   ],
   "pulse": {
     "id": 5,
-    "tick": 337,
-    "session": "13883549-c124-43f1-ad41-9fb59dc48571",
+    "tick": 289,
+    "session": "3db7a4be-2511-42c6-ac5c-28be631f414d",
     "tool": "wake-driver",
     "kind": "pulse",
     "position": {
@@ -27,21 +27,21 @@
       "z": -2.4
     }
   },
-  "bytes": 1421,
+  "bytes": 1473,
   "state": {
-    "tick": 357,
+    "tick": 330,
     "players": {
-      "26e6917e-aec5-4db7-9f65-344f6f5f84a0": {
-        "x": -2.1540074749201095,
+      "e18ca083-f691-4a3a-84fe-d5497725b92c": {
+        "x": -1.9985105053735266,
         "y": 0,
-        "z": -1.4568857583344714,
-        "vx": -0.01946669611811486,
+        "z": -0.2934549694181892,
+        "vx": 0.000003046836268276121,
         "vy": 0,
-        "vz": 0.11921056660849022,
-        "facing": -3.104740193174697,
+        "vz": 0.004309043944071424,
+        "facing": -3.1281467219159187,
         "gesture": 0
       },
-      "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae": {
+      "7abc2524-4478-41e4-83f3-d64009080115": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -55,11 +55,11 @@
     "toys": {
       "ball": {
         "x": -2,
-        "y": 0.3154500000000001,
-        "z": 4.7716109393747,
+        "y": 0.0031575039999995266,
+        "z": 11.65765675163411,
         "vx": 0,
-        "vy": 0.8280000000000018,
-        "vz": 8.803194631677984,
+        "vy": -1.603084800000003,
+        "vz": 8.489992544824762,
         "facing": 0,
         "gesture": 0
       },
@@ -90,7 +90,7 @@
       "appliedSequence": 20,
       "eventSequence": 5,
       "players": {
-        "26e6917e-aec5-4db7-9f65-344f6f5f84a0": {
+        "e18ca083-f691-4a3a-84fe-d5497725b92c": {
           "tool": "rebound-panel",
           "phase": "idle",
           "held": false,
@@ -105,17 +105,18 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
-          "phaseUntil": 0,
-          "lastHeldTick": 264,
+          "phaseStarted": 208,
+          "phaseUntil": 208,
+          "lastHeldTick": 207,
           "target": null,
           "sequence": 9,
           "impulse": {
-            "x": -0.01946669611811486,
-            "z": 0.11921056660849022
+            "x": 0.000003046836268276121,
+            "z": 0.004309043944071424
           },
-          "immuneUntil": 367
+          "immuneUntil": 319
         },
-        "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae": {
+        "7abc2524-4478-41e4-83f3-d64009080115": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -130,6 +131,7 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
+          "phaseStarted": 0,
           "phaseUntil": 0,
           "lastHeldTick": 0,
           "target": null,
@@ -148,14 +150,14 @@
     "characters": 2,
     "readiness": [
       {
-        "session": "26e6917e-aec5-4db7-9f65-344f6f5f84a0",
+        "session": "e18ca083-f691-4a3a-84fe-d5497725b92c",
         "desired": "rebound-panel",
         "ready": true,
         "pending": false,
         "error": null
       },
       {
-        "session": "9d1fadd3-6d5b-472c-8627-8d6e37f4b5ae",
+        "session": "7abc2524-4478-41e4-83f3-d64009080115",
         "desired": null,
         "ready": true,
         "pending": false,
@@ -169,8 +171,8 @@
         "visible": true,
         "appearanceTriangles": 11262,
         "heldTriangles": 1682,
-        "visibleTriangles": 8427,
-        "effectTriangles": 24,
+        "visibleTriangles": 8523,
+        "effectTriangles": 120,
         "replacedTriangles": 2239,
         "heldBytes": 127412,
         "equippedHands": 2
@@ -189,7 +191,7 @@
     ]
   },
   "traffic": {
-    "incoming": 268926,
-    "outgoing": 38624
+    "incoming": 281434,
+    "outgoing": 41065
   }
 }

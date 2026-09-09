@@ -1,11 +1,13 @@
-import type {
-  Body,
-  Input,
-  ItemType,
-  Placement,
-  Simulation,
-  Vec3,
-  WorldMap,
+import {
+  supportAt,
+  top,
+  type Body,
+  type Input,
+  type ItemType,
+  type Placement,
+  type Simulation,
+  type Vec3,
+  type WorldMap,
 } from "./core.js";
 
 /** Presentation assets use `wield-${id}`; physics never reads meshes or rig anchors. */
@@ -35,7 +37,47 @@ export type ActionCommand = {
   session: string;
   intent: ActionIntent;
 };
-export type ToolPhase = "idle" | "reeling" | "braced" | "charging" | "cooldown";
+export type ToolPhase =
+  | "idle"
+  | "reeling"
+  | "braced"
+  | "charging"
+  | "leaping"
+  | "impact"
+  | "recoiling"
+  | "cooldown";
+export const WAKE_MOTION = {
+  chargeTicks: 6,
+  jumpSpeed: 4.8,
+  leapTimeoutTicks: 45,
+  impactTicks: 3,
+  recoilSpeed: 2.7,
+  recoilTimeoutTicks: 30,
+} as const;
+export function actionMovementLocked(action: PlayerActionState | undefined) {
+  return (
+    !!action &&
+    ["charging", "leaping", "impact", "recoiling"].includes(action.phase)
+  );
+}
+function grounded(map: WorldMap, body: Body) {
+  const surface = supportAt(map, body.x, body.z, body.y + 0.01);
+  return (
+    !!surface &&
+    Math.abs(body.y - top(surface, body.z)) < 0.001 &&
+    Math.abs(body.vy) < 0.001
+  );
+}
+function transition(
+  p: PlayerActionState,
+  phase: ToolPhase,
+  currentTick: number,
+  duration = 0,
+) {
+  p.phase = phase;
+  p.phaseStarted = currentTick;
+  p.phaseUntil = currentTick + duration;
+}
 export type PlayerActionState = {
   tool: ToolId | null;
   phase: ToolPhase;
@@ -44,6 +86,7 @@ export type PlayerActionState = {
   aimManual: boolean;
   cooldownUntil: number;
   cooldowns: Record<ToolId, number>;
+  phaseStarted: number;
   phaseUntil: number;
   lastHeldTick: number;
   target: string | null;
@@ -172,6 +215,7 @@ function playerState(body: Body): PlayerActionState {
     aimManual: false,
     cooldownUntil: 0,
     cooldowns: { "tether-winch": 0, "rebound-panel": 0, "wake-driver": 0 },
+    phaseStarted: 0,
     phaseUntil: 0,
     lastHeldTick: 0,
     target: null,
@@ -298,7 +342,7 @@ function cancel(state: Simulation, session: string) {
     emit(state, session, "release", state.players[session], p.target);
   p.held = false;
   p.target = null;
-  p.phase = state.tick < p.cooldownUntil ? "cooldown" : "idle";
+  transition(p, state.tick < p.cooldownUntil ? "cooldown" : "idle", state.tick);
 }
 function clampVelocity(body: Body) {
   const n = Math.hypot(body.vx, body.vy, body.vz);
@@ -338,7 +382,11 @@ export function stepActions(
         cancel(state, command.session);
         p.tool = intent.tool;
         p.cooldownUntil = p.tool ? p.cooldowns[p.tool] : 0;
-        p.phase = state.tick < p.cooldownUntil ? "cooldown" : "idle";
+        transition(
+          p,
+          state.tick < p.cooldownUntil ? "cooldown" : "idle",
+          state.tick,
+        );
       }
       continue;
     }
@@ -368,19 +416,19 @@ export function stepActions(
       }
       // A pulse is a press action: releasing the button does not cancel its windup.
       p.held = false;
-      if (p.phase !== "charging") cancel(state, command.session);
+      if (!actionMovementLocked(p)) cancel(state, command.session);
       continue;
     }
-    if (p.held || state.tick < p.cooldownUntil || p.phase === "charging")
+    if (p.held || state.tick < p.cooldownUntil || actionMovementLocked(p))
       continue;
+    if (p.tool === "wake-driver" && !grounded(map, body)) continue;
     p.held = true;
     p.lastHeldTick = state.tick;
     if (p.tool === "wake-driver") {
-      p.phase = "charging";
-      p.phaseUntil = state.tick + 6;
+      transition(p, "charging", state.tick, WAKE_MOTION.chargeTicks);
       p.cooldownUntil = p.cooldowns[p.tool] = state.tick + tool.cooldownTicks;
       emit(state, command.session, "charge", body);
-    } else if (p.tool === "rebound-panel") p.phase = "braced";
+    } else if (p.tool === "rebound-panel") transition(p, "braced", state.tick);
     else {
       const locked = new Set(
         Object.values(a.players)
@@ -413,7 +461,7 @@ export function stepActions(
               ) || compareIds(l.id, r.id),
         );
       p.target = candidates[0]?.id ?? null;
-      p.phase = p.target ? "reeling" : "idle";
+      transition(p, p.target ? "reeling" : "idle", state.tick);
       if (p.target)
         emit(state, command.session, "reel", state.toys[p.target], p.target);
       else p.held = false;
@@ -427,14 +475,15 @@ export function stepActions(
     if (
       Math.hypot(inputs[session]?.x ?? 0, inputs[session]?.z ?? 0) > 0.01 &&
       !p.held &&
-      p.phase !== "charging" &&
+      !actionMovementLocked(p) &&
       !p.aimManual
     )
       p.aim = { x: Math.sin(body.facing), z: Math.cos(body.facing) };
     if (p.held && inputs[session]?.toolHeld) p.lastHeldTick = state.tick;
-    if (p.held && state.tick - p.lastHeldTick > 8) cancel(state, session);
+    if (p.held && state.tick - p.lastHeldTick > 8 && !actionMovementLocked(p))
+      cancel(state, session);
     if (p.phase === "cooldown" && state.tick >= p.cooldownUntil)
-      p.phase = "idle";
+      transition(p, "idle", state.tick);
     if (!p.tool) continue;
     const tool = map.actionCatalog.tools.find((t) => t.id === p.tool)!;
     if (p.phase === "reeling" && p.target) {
@@ -517,60 +566,114 @@ export function stepActions(
       }
     }
     if (p.phase === "charging" && state.tick >= p.phaseUntil) {
-      const center = {
-        x: body.x + p.aim.x * 0.6,
-        y: body.y + 0.08,
-        z: body.z + p.aim.z * 0.6,
-      };
-      emit(state, session, "pulse", center);
-      const hit = (b: Body, height: number) =>
-        Math.hypot(b.x - center.x, b.z - center.z) <= tool.range &&
-        Math.abs(b.y - body.y) < 0.8 &&
-        actionLineClear(
-          map,
-          center,
-          { x: b.x, y: b.y + height, z: b.z },
-          items,
-          catalog,
-        );
-      const direction = (b: Body) => {
-        const dx = b.x - center.x,
-          dz = b.z - center.z,
-          d = Math.hypot(dx, dz);
-        return d < 0.05 ? p.aim : { x: dx / d, z: dz / d };
-      };
-      for (const t of map.toys) {
-        const b = state.toys[t.id];
-        if (hit(b, t.radius)) {
-          const n = direction(b);
-          b.vx += n.x * tool.strength;
-          b.vz += n.z * tool.strength;
-          b.vy = Math.max(b.vy, tool.strength);
-          clampVelocity(b);
-        }
-      }
-      for (const other of Object.keys(a.players).sort()) {
-        const b = state.players[other],
-          recipient = a.players[other];
-        if (
-          other !== session &&
-          recipient.immuneUntil <= state.tick &&
-          hit(b, 0.65)
-        ) {
-          const n = direction(b);
-          recipient.impulse = {
-            x: n.x * Math.min(4, tool.strength),
-            z: n.z * Math.min(4, tool.strength),
-          };
-          b.vy = Math.max(b.vy, Math.min(5, tool.strength));
-          recipient.immuneUntil = state.tick + 30;
-        }
-      }
       p.held = false;
-      p.phase = "cooldown";
+      if (!grounded(map, body)) {
+        cancel(state, session);
+        continue;
+      }
+      body.vy = WAKE_MOTION.jumpSpeed;
+      transition(p, "leaping", state.tick, WAKE_MOTION.leapTimeoutTicks);
+    } else if (p.phase === "impact" && state.tick >= p.phaseUntil) {
+      body.vy = WAKE_MOTION.recoilSpeed;
+      transition(p, "recoiling", state.tick, WAKE_MOTION.recoilTimeoutTicks);
+    } else if (
+      (p.phase === "leaping" || p.phase === "recoiling") &&
+      state.tick >= p.phaseUntil
+    ) {
+      cancel(state, session);
     }
   }
   a.events = a.events.filter((event) => state.tick - event.tick <= 90);
+}
+/** Called after player collision integration: only a real landing can produce a strike. */
+export function finishActions(
+  map: WorldMap,
+  state: Simulation,
+  items: Placement[] = [],
+  catalog: ItemType[] = [],
+) {
+  if (!map.actionCatalog || !state.actions) return;
+  const a = state.actions;
+  for (const session of Object.keys(a.players).sort()) {
+    const p = a.players[session],
+      body = state.players[session];
+    if (p.tool !== "wake-driver" || !grounded(map, body)) continue;
+    if (p.phase === "recoiling") {
+      transition(
+        p,
+        state.tick < p.cooldownUntil ? "cooldown" : "idle",
+        state.tick,
+      );
+      continue;
+    }
+    if (p.phase !== "leaping") continue;
+    const tool = map.actionCatalog.tools.find((t) => t.id === p.tool)!;
+    const center = {
+      x: body.x + p.aim.x * 0.6,
+      y: body.y + 0.08,
+      z: body.z + p.aim.z * 0.6,
+    };
+    transition(p, "impact", state.tick, WAKE_MOTION.impactTicks);
+    const ground = supportAt(map, center.x, center.z, body.y + 0.65);
+    // A landing at a ledge cannot strike a different storey or create a wave
+    // inside a wall. Sloped ground also determines the event's real height.
+    if (!ground || Math.abs(top(ground, center.z) - body.y) > 0.65) continue;
+    center.y = top(ground, center.z) + 0.08;
+    if (
+      !actionLineClear(
+        map,
+        { x: body.x, y: body.y + 0.7, z: body.z },
+        center,
+        items,
+        catalog,
+      )
+    )
+      continue;
+    emit(state, session, "pulse", center);
+    const hit = (b: Body, height: number) =>
+      Math.hypot(b.x - center.x, b.z - center.z) <= tool.range &&
+      Math.abs(b.y - body.y) < 0.8 &&
+      actionLineClear(
+        map,
+        center,
+        { x: b.x, y: b.y + height, z: b.z },
+        items,
+        catalog,
+      );
+    const direction = (b: Body) => {
+      const dx = b.x - center.x,
+        dz = b.z - center.z,
+        d = Math.hypot(dx, dz);
+      return d < 0.05 ? p.aim : { x: dx / d, z: dz / d };
+    };
+    for (const t of map.toys) {
+      const b = state.toys[t.id];
+      if (hit(b, t.radius)) {
+        const n = direction(b);
+        b.vx += n.x * tool.strength;
+        b.vz += n.z * tool.strength;
+        b.vy = Math.max(b.vy, tool.strength);
+        clampVelocity(b);
+      }
+    }
+    for (const other of Object.keys(a.players).sort()) {
+      const b = state.players[other],
+        recipient = a.players[other];
+      if (
+        other !== session &&
+        recipient.immuneUntil <= state.tick &&
+        hit(b, 0.65)
+      ) {
+        const n = direction(b);
+        recipient.impulse = {
+          x: n.x * Math.min(4, tool.strength),
+          z: n.z * Math.min(4, tool.strength),
+        };
+        b.vy = Math.max(b.vy, Math.min(5, tool.strength));
+        recipient.immuneUntil = state.tick + 30;
+      }
+    }
+  }
 }
 export function validActionState(
   value: unknown,
@@ -608,6 +711,7 @@ export function validActionState(
         "aimManual",
         "cooldownUntil",
         "cooldowns",
+        "phaseStarted",
         "phaseUntil",
         "lastHeldTick",
         "target",
@@ -617,9 +721,16 @@ export function validActionState(
       ]) ||
       (p.tool !== null &&
         !map.actionCatalog.tools.some((t) => t.id === p.tool)) ||
-      !["idle", "reeling", "braced", "charging", "cooldown"].includes(
-        p.phase,
-      ) ||
+      ![
+        "idle",
+        "reeling",
+        "braced",
+        "charging",
+        "leaping",
+        "impact",
+        "recoiling",
+        "cooldown",
+      ].includes(p.phase) ||
       typeof p.held !== "boolean" ||
       typeof p.aimManual !== "boolean" ||
       !exact(p.aim, ["x", "z"]) ||
@@ -636,6 +747,9 @@ export function validActionState(
       ![p.cooldownUntil, p.phaseUntil, p.immuneUntil].every(
         (v) => tick(v) && v <= currentTick + 300,
       ) ||
+      !tick(p.phaseStarted) ||
+      p.phaseStarted > currentTick ||
+      p.phaseUntil < p.phaseStarted ||
       !tick(p.lastHeldTick) ||
       p.lastHeldTick > currentTick ||
       !tick(p.sequence) ||
@@ -647,7 +761,7 @@ export function validActionState(
         (p.held || p.target || !["idle", "cooldown"].includes(p.phase))) ||
       (p.phase === "reeling" && (p.tool !== "tether-winch" || !p.target)) ||
       (p.phase === "braced" && p.tool !== "rebound-panel") ||
-      (p.phase === "charging" && p.tool !== "wake-driver")
+      (actionMovementLocked(p) && p.tool !== "wake-driver")
     )
       return false;
   }

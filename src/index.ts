@@ -7,6 +7,8 @@ export {
   validateActionCatalog,
   validateActionIntent,
   actionLineClear,
+  actionMovementLocked,
+  WAKE_MOTION,
 } from "./world-actions.js";
 export type {
   ToolId,
@@ -30,3 +32,6 @@ export type {
   RoomLayout,
   Simulation,
 } from "./core.js";
+export { findWalkPath, canWalkSegment } from "./navigation.js";
+export type { NavigationOptions, NavigationResult } from "./navigation.js";
+export type { Vec3 } from "./core.js";

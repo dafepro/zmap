@@ -1,7 +1,9 @@
-import { advanceToy } from "./toy-physics.js";
+import { advanceToys } from "./toy-physics.js";
 import {
   initialActionState,
   stepActions,
+  finishActions,
+  actionMovementLocked,
   validActionState,
   validateActionCatalog,
   type WorldActionCatalog,
@@ -27,6 +29,8 @@ export type Toy = {
   color: string;
   sleep: "home";
   restitution?: number;
+  /** Kilograms. Omitted values use equal density, with a 0.3m ball weighing 1kg. */
+  mass?: number;
 };
 export type Trigger = {
   id: string;
@@ -208,7 +212,10 @@ export function validateMap(map: WorldMap) {
       t.sleep !== "home" ||
       !finite(t.restitution ?? 0.65) ||
       (t.restitution ?? 0.65) < 0 ||
-      (t.restitution ?? 0.65) > 1
+      (t.restitution ?? 0.65) > 1 ||
+      !finite(t.mass ?? 1) ||
+      (t.mass ?? 1) < 0.01 ||
+      (t.mass ?? 1) > 1000
     )
       throw Error("Invalid toy");
     ids.add(t.id);
@@ -277,6 +284,15 @@ function blocked(
       y + height > p.position.y
     );
   });
+}
+/** Tests the same player volume used by movement, independently of ground support. */
+export function canOccupyPlayer(
+  map: WorldMap,
+  point: Vec3,
+  items: Placement[] = [],
+  catalog: ItemType[] = [],
+) {
+  return !blocked(map, items, catalog, point.x, point.y, point.z, 0.28, 1.5);
 }
 function moveBody(
   map: WorldMap,
@@ -371,19 +387,28 @@ export function stepWorld(
 ) {
   state.tick++;
   stepActions(map, state, inputs, commands, items, catalog);
-  for (const [id, b] of Object.entries(state.players))
+  for (const [id, b] of Object.entries(state.players)) {
+    const action = state.actions?.players[id];
+    if (actionMovementLocked(action))
+      b.facing = Math.atan2(action!.aim.x, action!.aim.z);
     movePlayer(
       map,
       b,
-      inputs[id] ?? idleInput(),
+      actionMovementLocked(action) ? idleInput() : (inputs[id] ?? idleInput()),
       STEP,
       items,
       catalog,
-      state.actions?.players[id]?.impulse,
+      actionMovementLocked(action) ? undefined : action?.impulse,
     );
-  for (const t of map.toys) {
+  }
+  finishActions(map, state, items, catalog);
+  for (const t of [...map.toys].sort((a, b) =>
+    a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+  )) {
     const b = state.toys[t.id];
-    for (const [id, p] of Object.entries(state.players)) {
+    for (const [id, p] of Object.entries(state.players).sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )) {
       const dx = b.x - p.x,
         dz = b.z - p.z,
         distance = Math.hypot(dx, dz);
@@ -431,8 +456,8 @@ export function stepWorld(
         state.triggers[trigger.id] = trigger.cooldown;
       }
     }
-    advanceToy(map, b, t, STEP, items, catalog);
   }
+  advanceToys(map, state.toys, map.toys, STEP, items, catalog);
   for (const key of Object.keys(state.triggers))
     state.triggers[key] = Math.max(0, state.triggers[key] - STEP);
 }

@@ -58,6 +58,8 @@
     "docs/api.md",
     "docs/content.md",
     "src",
-    "docs/field-tools.md"
+    "docs/field-tools.md",
+    "docs/navigation.md",
+    "docs/physics.md"
   ]
 }

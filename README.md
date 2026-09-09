@@ -82,3 +82,5 @@ The independent [Avatar Studio](avatar-studio/README.md) provides 22 original Bl
 The hub consumes the same package through approved prepared factories in `examples/models.ts`. `npm run dev` and `npm run typecheck` build that package and copy its catalog/models into the example's generated public assets. Application identity selects approved recipes; ZMap still receives only character visuals. The standalone studio builds and tests independently of the parent repository.
 
 See [multiplayer coverage](docs/multiplayer-coverage.md) for the tested functional boundaries, impaired-network method and the remaining full-room/device performance qualification.
+
+The [Action Yard](http://localhost:5173/action.html) demonstrates shared two-handed field tools, click/tap paths, an explicit joystick, colliding balls and accepted jump/strike/recoil motion. See [field actions](docs/field-tools.md), [navigation](docs/navigation.md), and [multiplayer test boundaries](docs/multiplayer-coverage.md).

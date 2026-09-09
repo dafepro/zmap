@@ -14,7 +14,7 @@ Authored `blockers` use X/Z rectangles and Y intervals. Add physical blockers fo
 
 ## Toys and triggers
 
-A toy has a stable ID, home pose, radius, color and `sleep: 'home'`. Optional `restitution` (0–1, default 0.65) controls bounce. A surface may specify `rollingResistance` (0–10 m/s², default 0.65). Ground resistance reduces the whole tangent velocity to zero without reversing it or steering a flat roll. Air drag is separate; gravity supplies downhill acceleration. Contact substeps and normal reflection preserve tangential momentum at walls and circular decorations. Ceiling/floor contacts bounce, and a lost toy resets to its own home. Ball contacts and explicit kicks are distinct. Height constrains reach; slopes accelerate toys downhill. A declarative trigger contains a position, radius, bounded impulse and cooldown. Add a trigger in content to create another launcher without modifying core:
+A toy has a stable ID, home pose, radius, color and `sleep: 'home'`. Optional `restitution` (0–1, default 0.65) controls bounce. Optional `mass` (0.01–1,000 kg) controls sphere contact response; the default uses equal density, with a 0.3 m ball weighing 1 kg. A surface may specify `rollingResistance` (0–10 m/s², default 0.65). Ground resistance reduces the whole tangent velocity to zero without reversing it or steering a flat roll. Air drag is separate; gravity supplies downhill acceleration. Contact substeps and normal reflection preserve tangential momentum at walls and circular decorations. Ceiling/floor contacts bounce, and a lost toy resets to its own home. Ball contacts and explicit kicks are distinct. Height constrains reach; slopes accelerate toys downhill. A declarative trigger contains a position, radius, bounded impulse and cooldown. Add a trigger in content to create another launcher without modifying core:
 
 ```ts
 triggers: [
@@ -30,7 +30,7 @@ triggers: [
 
 Trigger cooldown and toy velocity are transient. A late join receives current values; sleep resets them. The scene may name an object `trigger-pop-pad` to show activation. The reference visual changes emissive color and pad height; reduced motion stops the movement treatment. A trigger is play state and emits no reward or inventory event.
 
-Visible ball rolling uses displacement/radius and a quaternion, independent of render frame rate. This is a lightweight sphere controller: spin is visual, airborne rotation does not model angular momentum, and ball-to-ball rigid-body contacts are not implemented.
+Visible ball rolling uses displacement/radius and a quaternion, independent of render frame rate. This is a lightweight sphere controller: spin is visual, airborne rotation does not model angular momentum, and rotation is not part of the contact solver. Sphere-to-sphere contacts use simultaneous bounded substeps, true 3D centres, mass and restitution, with stable grounded stacks. See [physics contracts and tests](physics.md).
 
 This first extension surface is declarative impulse/cooldown behavior. General custom behavior plugins and durable finite-state toys remain work, rather than accepting peer-provided executable scripts.
 

@@ -3,6 +3,10 @@ import { Zoomap, type ToolId } from "zmap";
 import { actionYard } from "../action-content";
 import { identities } from "../content";
 import { loadActionKit } from "../action-models";
+import {
+  createNavigationControls,
+  type MovementMode,
+} from "../navigation-controls";
 
 const query = new URLSearchParams(location.search);
 const actor = Object.hasOwn(identities, query.get("as") ?? "ari")
@@ -37,16 +41,16 @@ const tools: {
     number: "03",
     name: "Wake driver",
     description:
-      "Charge a ground pulse that lifts nearby balls and gives friends a gentle nudge.",
-    action: "Press to send a ground pulse",
+      "Jump, drive it into the ground, and bounce back. The impact lifts nearby balls and nudges friends.",
+    action: "Press to jump & strike",
   },
 ];
 document.querySelector("#app")!.innerHTML = `
 <header><a class="brand" href="/">zoomap<span> / FIELDWORK</span></a><a class="back" href="/">Back to the courtyard ↗</a></header>
 <main><section class="intro"><div><p class="eyebrow">THE SHARED ACTION YARD</p><h1>A little force.<br>A lot of <em>possibility.</em></h1></div><p>Big tools. Both hands. Real reactions.<br>Bring a friend and put something in motion.</p></section>
-<div class="workspace"><section class="field" aria-label="Shared action yard"><div class="field-top"><span>FIELD 01 <i></i> <strong id="connection" role="status">Opening the yard…</strong></span><span id="people">0 PLAYERS</span></div><div id="yard"></div><div id="loading" class="loading" role="status">Getting the field equipment ready…</div><div class="field-bottom"><div><strong>${identities[actor].name}</strong><span id="position">Ground level</span></div><button id="focus" class="small">⌖ Focus movement</button></div><div id="stick" class="stick" aria-label="Touch movement control"><span></span></div><button id="use-tool" class="use-tool" disabled aria-pressed="false">Choose a field tool</button><button id="cancel-tool" class="cancel-tool" disabled>Put it at rest</button></section>
+<div class="workspace"><section class="field" aria-label="Shared action yard"><div class="field-top"><span>FIELD 01 <i></i> <strong id="connection" role="status">Opening the yard…</strong></span><span id="people">0 PLAYERS</span></div><div id="yard"></div><div id="loading" class="loading" role="status">Getting the field equipment ready…</div><div class="field-bottom"><div><strong>${identities[actor].name}</strong><span id="position">Ground level</span></div><button id="focus" class="small">⌖ Keyboard focus</button></div><div class="movement-controls" role="group" aria-label="Movement mode"><button id="mode-path" aria-pressed="true">Click / tap</button><button id="mode-joystick" aria-pressed="false">Joystick</button></div><div class="movement-hint"><span id="movement-status" role="status">Click or tap the ground to move</span><button id="stop-moving" hidden>Stop</button></div><div id="stick" class="stick" aria-label="Movement joystick" hidden><span></span></div><button id="use-tool" class="use-tool" disabled aria-pressed="false">Choose a field tool</button><button id="cancel-tool" class="cancel-tool" disabled>Put it at rest</button></section>
 <aside><p class="eyebrow">YOUR FIELD EQUIPMENT</p><h2>Make a good move.</h2><div class="tool-list">${tools.map((tool) => `<button class="tool-card" id="pick-${tool.id}" data-tool="${tool.id}" aria-pressed="false" disabled><span class="tool-number">${tool.number}</span><span><strong>${tool.name}</strong><small>${tool.description}</small></span><b aria-hidden="true">↗</b></button>`).join("")}</div><div class="phase"><span id="tool-phase" role="status">Hands free</span><button id="empty-tool" class="text-button" disabled>Empty hands</button></div><p id="feedback" class="feedback" role="status">Choose one tool. The whole room sees the same result.</p><a class="invite" href="/action.html?as=${friend}" target="_blank" rel="noopener">Open a friend’s view <span>↗</span></a><p class="fine">Another connected player, with a separate demo identity.</p><div class="rules"><h3>Built for a little back-and-forth.</h3><p>Aim by moving, or point into the yard. Balls stay loose, walls stop reach, and the bridge is a different level.</p><p>Try a pass with the winch and panel. Stand near a friend for a ground pulse.</p></div><ol id="activity" aria-label="Recent shared actions"><li>The field is ready for an idea.</li></ol></aside></div>
-<footer><span><kbd>W A S D</kbd> Move <kbd>Q</kbd> Use tool <kbd>Esc</kbd> Cancel</span><span>Touch: aim in the yard, move with the pad, hold the action button.</span><button id="leave" class="text-button">Leave yard ↗</button></footer><details><summary>About this shared field</summary><p>This independent application uses the public Zoomap room and avatar APIs. The active browser simulates bounded shared play; the relay fences its authority and checkpoints actions. No physical result grants inventory, access, rewards or training credit.</p><pre id="diagnostics"></pre></details></main>`;
+<footer><span>Click / tap to walk <kbd>Q</kbd> Use tool <kbd>Esc</kbd> Stop</span><span>Switch to Joystick for direct movement. Keyboard: <kbd>W A S D</kbd></span><button id="leave" class="text-button">Leave yard ↗</button></footer><details><summary>About this shared field</summary><p>This independent application uses the public Zoomap room and avatar APIs. The active browser simulates bounded shared play; the relay fences its authority and checkpoints actions. No physical result grants inventory, access, rewards or training credit.</p><pre id="diagnostics"></pre></details></main>`;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 $("yard").insertAdjacentHTML(
@@ -61,7 +65,8 @@ const use = $<HTMLButtonElement>("use-tool"),
   lifecycle = new AbortController(),
   signal = lifecycle.signal;
 let world: Zoomap | undefined,
-  kit: Awaited<ReturnType<typeof loadActionKit>> | undefined;
+  kit: Awaited<ReturnType<typeof loadActionKit>> | undefined,
+  movement: ReturnType<typeof createNavigationControls> | undefined;
 let closed = false,
   timer: ReturnType<typeof setInterval> | undefined,
   lastEvent = 0,
@@ -143,8 +148,14 @@ function refresh() {
           : state?.phase === "braced"
             ? "Braced · send something this way"
             : state?.phase === "charging"
-              ? "Charging the ground pulse"
-              : "Ready for your next move";
+              ? "Crouch · get ready…"
+              : state?.phase === "leaping"
+                ? "Up… and drive it down!"
+                : state?.phase === "impact"
+                  ? "Ground strike!"
+                  : state?.phase === "recoiling"
+                    ? "Bounce back · land on your feet"
+                    : "Ready for your next move";
   $("people").textContent =
     `${world.roster.length} ${world.roster.length === 1 ? "PLAYER" : "PLAYERS"}`;
   $("position").textContent =
@@ -194,20 +205,12 @@ function refresh() {
     2,
   );
 }
-function aim(event: PointerEvent) {
-  if (!world?.local || world.status !== "ready") return;
-  const point = world.view.pick(event.clientX, event.clientY, world.local.y);
-  if (
-    point &&
-    Math.hypot(point.x - world.local.x, point.z - world.local.z) > 0.1
-  )
-    world.setToolAim(point.x - world.local.x, point.z - world.local.z);
-}
 function dispose() {
   if (closed) return;
   closed = true;
   clearInterval(timer);
   lifecycle.abort();
+  movement?.dispose();
   world?.dispose();
   kit?.dispose();
 }
@@ -255,6 +258,24 @@ async function start() {
     $<HTMLButtonElement>("camera-closer").disabled = camera.zoom >= 2.5;
   };
   setCameraZoom(2);
+  movement = createNavigationControls(world, actionYard, {
+    stick: $("stick"),
+    status: $("movement-status"),
+    stop: $<HTMLButtonElement>("stop-moving"),
+  });
+  for (const mode of ["path", "joystick"] as MovementMode[])
+    $("mode-" + mode).addEventListener(
+      "click",
+      () => {
+        movement!.setMode(mode);
+        for (const value of ["path", "joystick"])
+          $("mode-" + value).setAttribute(
+            "aria-pressed",
+            String(mode === value),
+          );
+      },
+      { signal },
+    );
   $("retry-equipment").addEventListener(
     "click",
     () =>
@@ -310,6 +331,7 @@ async function start() {
   let pointer: number | undefined;
   const press = () => {
     if (use.disabled) return;
+    movement?.stop();
     run(() => world!.useTool(true));
     use.setAttribute("aria-pressed", "true");
   };
@@ -402,57 +424,6 @@ async function start() {
     },
     { signal },
   );
-  world.view.canvas.addEventListener(
-    "pointermove",
-    (event) => {
-      if (event.pointerType === "mouse") aim(event);
-    },
-    { signal },
-  );
-  world.view.canvas.addEventListener(
-    "pointerdown",
-    (event) => {
-      aim(event);
-      world!.view.canvas.focus({ preventScroll: true });
-    },
-    { signal },
-  );
-  const stick = $("stick"),
-    knob = stick.querySelector<HTMLElement>("span")!;
-  let stickPointer: number | undefined;
-  const move = (event: PointerEvent) => {
-    if (event.pointerId !== stickPointer) return;
-    const rect = stick.getBoundingClientRect(),
-      x = (event.clientX - rect.left - rect.width / 2) / 35,
-      y = (event.clientY - rect.top - rect.height / 2) / 35,
-      length = Math.max(1, Math.hypot(x, y));
-    world!.setInput(x / length, y / length);
-    knob.style.transform = `translate(${(x / length) * 28}px,${(y / length) * 28}px)`;
-  };
-  stick.addEventListener(
-    "pointerdown",
-    (event) => {
-      if (stickPointer !== undefined) return;
-      event.preventDefault();
-      stickPointer = event.pointerId;
-      stick.setPointerCapture(stickPointer);
-      move(event);
-    },
-    { signal },
-  );
-  stick.addEventListener("pointermove", move, { signal });
-  const stop = (event: PointerEvent) => {
-    if (event.pointerId !== stickPointer) return;
-    stickPointer = undefined;
-    world!.setInput(0, 0);
-    knob.style.transform = "";
-  };
-  for (const name of [
-    "pointerup",
-    "pointercancel",
-    "lostpointercapture",
-  ] as const)
-    stick.addEventListener(name, stop, { signal });
   $("leave").addEventListener(
     "click",
     () => {
@@ -463,7 +434,13 @@ async function start() {
     },
     { signal },
   );
-  (window as any).zoomapActionYard = { world, kit, map: actionYard, dispose };
+  (window as any).zoomapActionYard = {
+    world,
+    kit,
+    map: actionYard,
+    movement,
+    dispose,
+  };
   await world.enter({
     url: new URL("/action-room", location.href).href.replace(/^http/, "ws"),
     room: "action-yard",

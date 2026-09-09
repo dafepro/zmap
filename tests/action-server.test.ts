@@ -165,7 +165,12 @@ test("action relay stamps identity, rejects malformed/stale intents, checkpoints
       .filter((m) => m.type === "action")
       .map((m) => m.command);
   assert.equal(commands.length, 2);
-  for (let i = 0; i < 8; i++)
+  let observedHop = false;
+  for (
+    let i = 0;
+    i < 90 && !state.actions!.events.some((event) => event.kind === "pulse");
+    i++
+  ) {
     stepWorld(
       map,
       state,
@@ -174,6 +179,12 @@ test("action relay stamps identity, rejects malformed/stale intents, checkpoints
       [],
       i === 0 ? commands : [],
     );
+    observedHop ||= state.players[bid].y > 0.1;
+  }
+  assert.ok(observedHop, "the driver must physically hop before striking");
+  assert.ok(state.actions!.events.some((event) => event.kind === "pulse"));
+  assert.ok(state.players[bid].y < 0.03, "impact is on the actual landing");
+  stepWorld(map, state, { [aid]: idleInput(), [bid]: idleInput() });
   assert.ok(
     state.players[aid].y > 0,
     "the shared pulse must move the other actual player",

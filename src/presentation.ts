@@ -12,7 +12,7 @@ export function rollingMotion(previous: Vec3, next: Vec3, radius: number) {
     angle: distance / radius,
   };
 }
-function mixBody(a: Body, b: Body, alpha: number): Body {
+export function interpolateBody(a: Body, b: Body, alpha: number): Body {
   if (Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) > 3) return { ...b };
   const mix = (x: number, y: number) => x + (y - x) * alpha;
   const angle = Math.atan2(
@@ -30,6 +30,26 @@ function mixBody(a: Body, b: Body, alpha: number): Body {
     gesture: mix(a.gesture, b.gesture),
   };
 }
+export function interpolateSimulation(
+  a: Simulation,
+  b: Simulation,
+  alpha: number,
+): Simulation {
+  const bodies = (left: Record<string, Body>, right: Record<string, Body>) =>
+    Object.fromEntries(
+      Object.entries(right).map(([id, body]) => [
+        id,
+        left[id] ? interpolateBody(left[id], body, alpha) : { ...body },
+      ]),
+    );
+  return {
+    tick: a.tick,
+    players: bodies(a.players, b.players),
+    toys: bodies(a.toys, b.toys),
+    triggers: { ...a.triggers },
+    ...(a.actions ? { actions: structuredClone(a.actions) } : {}),
+  };
+}
 /** Bounded display-only interpolation. Never feed delayed poses back into simulation or durable writes. */
 export class SnapshotPresentation {
   private frames: { time: number; state: Simulation }[] = [];
@@ -37,7 +57,8 @@ export class SnapshotPresentation {
     this.frames = [];
   }
   push(state: Simulation, time: number) {
-    this.frames.push({ time, state });
+    // The host mutates its simulation every fixed step; display history must own its poses.
+    this.frames.push({ time, state: structuredClone(state) });
     if (this.frames.length > 8) this.frames.shift();
   }
   sample(now: number, delayMs = 80): Simulation | undefined {
@@ -58,22 +79,6 @@ export class SnapshotPresentation {
       0,
       Math.min(1, (target - a.time) / (b.time - a.time)),
     );
-    const interpolate = (
-      left: Record<string, Body>,
-      right: Record<string, Body>,
-    ) =>
-      Object.fromEntries(
-        Object.entries(right).map(([id, body]) => [
-          id,
-          left[id] ? mixBody(left[id], body, alpha) : { ...body },
-        ]),
-      );
-    return {
-      tick: a.state.tick,
-      players: interpolate(a.state.players, b.state.players),
-      toys: interpolate(a.state.toys, b.state.toys),
-      triggers: { ...a.state.triggers },
-      ...(a.state.actions ? { actions: structuredClone(a.state.actions) } : {}),
-    };
+    return interpolateSimulation(a.state, b.state, alpha);
   }
 }

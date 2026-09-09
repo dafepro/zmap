@@ -225,6 +225,7 @@ export class WorldView {
           c = { object, update: () => {} };
         }
         this.characters.set(p.session, c);
+        c.object.userData.zoomapSession = p.session;
         this.scene.add(c.object);
       }
       const b = p.session === localId ? local : state.players[p.session];

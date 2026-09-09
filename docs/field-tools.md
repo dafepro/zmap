@@ -24,11 +24,11 @@ The example also exposes `rebound-panel` and `wake-driver`. The action catalog c
 
 ## Rules
 
-| Tool          | Reach / strength / cooldown at 30 Hz | Shared behavior                                                                                                                                                                                  |
-| ------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Tether Winch  | 5.5 m / 10 / 18 ticks                | Select an existing visible toy inside the aim cone. One player owns its transient claim. Bounded forces reel it toward a carried point; release pitches it along aim.                            |
-| Rebound Panel | 1.8 m / 7 / 18 ticks                 | A finite front contact region reflects incoming toys and boosts another player. Direction, height, line of sight and contact cooldown matter.                                                    |
-| Wake Driver   | 3 m / 5 / 60 ticks                   | Six-tick charge followed by a radial ground impulse. Same-level objects and other players are lifted and nudged; intervening geometry and recipient immunity prevent through-wall/repeated hits. |
+| Tool          | Reach / strength / cooldown at 30 Hz | Shared behavior                                                                                                                                                                                              |
+| ------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Tether Winch  | 5.5 m / 10 / 18 ticks                | Select an existing visible toy inside the aim cone. One player owns its transient claim. Bounded forces reel it toward a carried point; release pitches it along aim.                                        |
+| Rebound Panel | 1.8 m / 7 / 18 ticks                 | A finite front contact region reflects incoming toys and boosts another player. Direction, height, line of sight and contact cooldown matter.                                                                |
+| Wake Driver   | 3 m / 5 / 60 ticks                   | Anticipation, physical hop, grounded strike, recoil hop and feet landing. The supported impact lifts same-level toys and nudges players; geometry and recipient immunity prevent through-wall/repeated hits. |
 
 Cooldowns are tracked per tool, so switching equipment cannot reset them. Reconnecting into a live room retains that identity's unexpired cooldowns but starts with no held input. These are transient room mechanics, not persistent account data.
 
@@ -52,4 +52,8 @@ The standalone workbench at port 5180 previews mechanisms and fit without a serv
 
 `tests/world-actions.test.ts` covers deterministic replay, claims, real displacement, cooldowns, analytic obstructions, height and cancellation. `tests/action-server.test.ts` exercises actual sockets, capability negotiation, malformed/stale/duplicate intents, late join, host-loss replay and reconnect state. `tests/browser/actions.spec.ts` drives actual browser clients in Action Yard. Avatar Studio separately checks the exported GLBs, complete two-hand grip matrices, body weights, animations, shader rendering and disposal.
 
-These tests extend the [multiplayer coverage matrix](multiplayer-coverage.md). They do not qualify the outstanding physical-phone, WAN percentile or 15-minute fully rendered room targets. This is shared social physics with bounded impulses, not a rigid-body engine: ball-to-ball collision, rope obstacles, articulated finger animation and destructible scenery are not implemented.
+These tests extend the [multiplayer coverage matrix](multiplayer-coverage.md). They do not qualify the outstanding physical-phone, WAN percentile or 15-minute fully rendered room targets. This is shared social physics with bounded impulses, not a rigid-body engine: rope wrapping around obstacles, articulated finger animation and destructible scenery are not implemented. Balls now collide in simultaneous bounded substeps using true 3D centres, mass and restitution; contacts preserve momentum without adding collision energy.
+
+## Movement and action presentation
+
+The Action Yard defaults to click/tap pathing with an explicit joystick mode and retained keyboard input. See [navigation and control ownership](navigation.md). Tool activation stops an active walking route. Accepted Wake phases lock ordinary movement until the strike/recoil sequence finishes; the impulse is emitted only after real supported ground contact. The serializable phase start/expiry ticks and body velocity survive host transfer, so the visual adapter can follow physics instead of running an unrelated local animation timer.

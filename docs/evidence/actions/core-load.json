@@ -1,7 +1,7 @@
 {
-  "provenance": "Node deterministic core; 20 actors, five toys, all three tools, 120 simulated seconds. No rendering, relay traffic or physical-phone qualification.",
-  "p95StepMs": 0.073083,
-  "maximumSnapshotBytes": 16451,
+  "provenance": "Node deterministic core; 20 actors, five toys, all three tools, 120 simulated seconds. Current shared ball contacts and physical Wake jump/landing/recoil sequence. No rendering, relay traffic or physical-phone qualification.",
+  "p95StepMs": 0.12829099999999016,
+  "maximumSnapshotBytes": 16816,
   "maximumRetainedEvents": 32,
-  "totalEmittedEvents": 701
+  "totalEmittedEvents": 744
 }

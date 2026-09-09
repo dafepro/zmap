@@ -9,8 +9,84 @@ import {
   fieldToolBehaviors,
   disposeAvatarResources,
   type AvatarInstance,
+  type Motion,
 } from "@zmap/avatar-studio";
-import type { Character, Identity, PlayerActionState, WorldMap } from "zmap";
+import {
+  WAKE_MOTION,
+  type Body,
+  type Character,
+  type Identity,
+  type PlayerActionState,
+  type WorldMap,
+  type WorldActionEvent,
+} from "zmap";
+
+/** The consuming simulation maps accepted action phases into reusable pose inputs. */
+export function fieldCharacterMotion(
+  body: Body,
+  action: PlayerActionState | undefined,
+  tick: number,
+  reducedMotion = false,
+  facing = action?.tool ? Math.atan2(action.aim.x, action.aim.z) : body.facing,
+): Motion {
+  const pose: NonNullable<Motion["pose"]> = {};
+  const phase = action?.phase;
+  const progress = action
+    ? THREE.MathUtils.clamp(
+        (tick - action.phaseStarted) / WAKE_MOTION.chargeTicks,
+        0,
+        1,
+      )
+    : 0;
+  if (phase === "braced")
+    Object.assign(pose, { crouch: 0.24, lean: 0.15, stance: 0.7 });
+  if (phase === "reeling")
+    Object.assign(pose, { crouch: 0.16, lean: -0.22, stance: 0.4 });
+  if (phase === "charging")
+    Object.assign(pose, {
+      crouch: 0.68 * progress,
+      lean: 0.32 * progress,
+      stance: 0.8,
+    });
+  if (phase === "leaping") {
+    const landing = THREE.MathUtils.clamp((-body.vy + 0.8) / 2, 0, 1);
+    Object.assign(pose, {
+      crouch: 0.1 + 0.9 * landing,
+      lean: 0.18 + 0.82 * landing,
+      stance: 0.8,
+      tuck: (1 - landing) * 0.8,
+    });
+  }
+  if (phase === "impact")
+    Object.assign(pose, { crouch: 1, lean: 1, stance: 0.8, recoil: 0.12 });
+  if (phase === "recoiling")
+    Object.assign(pose, {
+      crouch: 0.12,
+      lean: -0.24,
+      stance: 0.6,
+      tuck: 0.45,
+      recoil: 0.35,
+    });
+  if (phase === "cooldown" && action?.tool === "wake-driver") {
+    const settle = Math.max(0, 1 - (tick - action.phaseStarted) / 7);
+    Object.assign(pose, {
+      crouch: 0.3 * settle,
+      stance: 0.6 * settle,
+      recoil: 0.18 * settle,
+    });
+  }
+  return {
+    reducedMotion,
+    velocity: {
+      x: body.vx * Math.cos(facing) - body.vz * Math.sin(facing),
+      z: body.vx * Math.sin(facing) + body.vz * Math.cos(facing),
+    },
+    grounded:
+      Math.abs(body.vy) < 0.001 && phase !== "leaping" && phase !== "recoiling",
+    pose,
+    gesture: body.gesture > 0 ? "wave" : "idle",
+  };
+}
 
 /** App integration: identity selects appearance; accepted simulation state selects equipment. */
 export async function loadActionKit(
@@ -128,6 +204,8 @@ export async function loadActionKit(
       revision = 0;
     let session: string | null = null,
       loadError: string | null = null;
+    let impact: WorldActionEvent | undefined;
+    let displayedFacing: number | undefined, previousTime: number | undefined;
     const wield = new WieldController(
       avatar,
       wieldLibrary,
@@ -136,10 +214,21 @@ export async function loadActionKit(
           ? {
               phase: action.phase,
               time: tick / 30,
+              carrierPitch:
+                avatar.animationDiagnostics().pose.lean * 0.36 -
+                avatar.animationDiagnostics().pose.recoil * 0.12,
               progress: Math.min(
                 1,
                 Math.max(0, 1 - (action.phaseUntil - tick) / 6),
               ),
+              impact:
+                impact && ["rebound", "boost", "pulse"].includes(impact.kind)
+                  ? {
+                      id: impact.id,
+                      kind: impact.kind as "rebound" | "boost" | "pulse",
+                      age: (tick - impact.tick) / 30,
+                    }
+                  : undefined,
             }
           : undefined,
       ),
@@ -189,6 +278,23 @@ export async function loadActionKit(
     pulse.rotation.x = -Math.PI / 2;
     pulse.visible = false;
     root.add(pulse);
+    const dust = new THREE.InstancedMesh(
+      new THREE.OctahedronGeometry(1, 0),
+      new THREE.MeshBasicMaterial({
+        color: "#d7b98a",
+        transparent: true,
+        opacity: 0.8,
+        depthWrite: false,
+      }),
+      12,
+    );
+    dust.name = "field-impact-dust";
+    dust.count = 0;
+    dust.frustumCulled = false;
+    root.add(dust);
+    const dustMatrix = new THREE.Matrix4(),
+      dustRotation = new THREE.Quaternion(),
+      dustScale = new THREE.Vector3();
     const aim = new THREE.Mesh(
       new THREE.ConeGeometry(0.045, 0.15, 3),
       new THREE.MeshBasicMaterial({ color: "#cb993e" }),
@@ -253,7 +359,8 @@ export async function loadActionKit(
         style.clear();
         wield.dispose();
         avatar.dispose();
-        for (const object of [shadow, cable, pulse, aim]) {
+        dust.dispose();
+        for (const object of [shadow, cable, pulse, dust, aim]) {
           object.geometry.dispose();
           object.material.dispose();
           object.removeFromParent();
@@ -271,19 +378,62 @@ export async function loadActionKit(
         session = context.session;
         action = context.state.actions?.players[context.session];
         tick = context.state.tick;
+        impact = undefined;
+        for (
+          let i = (context.state.actions?.events.length ?? 0) - 1;
+          i >= 0;
+          i--
+        ) {
+          const event = context.state.actions!.events[i];
+          if (
+            event.session === context.session &&
+            event.tool === action?.tool &&
+            ["rebound", "boost", "pulse"].includes(event.kind)
+          ) {
+            impact = event;
+            break;
+          }
+        }
         const tool = action?.tool ?? null;
         if (tool !== desired) setTool(tool);
-        avatar.object.rotation.y = action?.tool
-          ? Math.atan2(action.aim.x, action.aim.z) - body.facing
-          : 0;
-        avatar.update(time, {
-          reducedMotion: context.reducedMotion,
-          speed: Math.min(1, Math.hypot(body.vx, body.vz) / 4),
-          gesture: body.gesture > 0 ? "wave" : "idle",
-        });
+        const targetFacing = action?.tool
+          ? Math.atan2(action.aim.x, action.aim.z)
+          : body.facing;
+        const dt =
+          previousTime === undefined
+            ? 0
+            : Math.max(0, Math.min(0.1, time - previousTime));
+        if (
+          displayedFacing === undefined ||
+          previousTime === undefined ||
+          time < previousTime ||
+          time - previousTime > 0.25 ||
+          context.reducedMotion
+        )
+          displayedFacing = targetFacing;
+        else
+          displayedFacing +=
+            Math.atan2(
+              Math.sin(targetFacing - displayedFacing),
+              Math.cos(targetFacing - displayedFacing),
+            ) *
+            (1 - Math.exp(-18 * dt));
+        previousTime = time;
+        avatar.object.rotation.y = displayedFacing - body.facing;
+        avatar.update(
+          time,
+          fieldCharacterMotion(
+            body,
+            action,
+            tick,
+            context.reducedMotion,
+            displayedFacing,
+          ),
+        );
         root.updateWorldMatrix(true, true);
         cable.visible = false;
         pulse.visible = false;
+        dust.count = 0;
         aim.visible = !!tool;
         const held = wield.getHand("right");
         if (
@@ -333,6 +483,35 @@ export async function loadActionKit(
               ? 0.5
               : 0.8 * (1 - age / 20);
             pulse.visible = true;
+            if (!context.reducedMotion && age < 15) {
+              const seconds = age / 30;
+              for (let i = 0; i < 12; i++) {
+                const angle = i * 2.3999632297,
+                  radius = 0.18 + seconds * (1.4 + (i % 3) * 0.35);
+                point.set(
+                  last.position.x + Math.cos(angle) * radius,
+                  last.position.y +
+                    0.035 +
+                    Math.max(
+                      0,
+                      seconds * (1.2 + (i % 4) * 0.12) - 3 * seconds * seconds,
+                    ),
+                  last.position.z + Math.sin(angle) * radius,
+                );
+                root.worldToLocal(point);
+                dustRotation.setFromEuler(
+                  new THREE.Euler(i * 0.7, angle, seconds * 2),
+                );
+                dustScale.setScalar(
+                  (0.045 + 0.009 * (i % 3)) * (1 - (0.65 * seconds) / 0.5),
+                );
+                dustMatrix.compose(point, dustRotation, dustScale);
+                dust.setMatrixAt(i, dustMatrix);
+              }
+              dust.count = 12;
+              dust.instanceMatrix.needsUpdate = true;
+              dust.material.opacity = 0.7 * (1 - age / 15);
+            }
           }
         }
         style.update(avatar.object, context.viewport);

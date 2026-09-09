@@ -1,6 +1,11 @@
-import { SnapshotPresentation } from "./presentation.js";
+import {
+  SnapshotPresentation,
+  interpolateBody,
+  interpolateSimulation,
+} from "./presentation.js";
 import {
   validateActionIntent,
+  actionMovementLocked,
   type ActionCommand,
   type ActionIntent,
   type ToolId,
@@ -45,6 +50,17 @@ export type ClientOptions = {
   onChange?: () => void;
   onActionRejected?: (reason: string) => void;
 };
+/** Latest movement wins; discrete edges survive a burst until one fixed step consumes them. */
+export function mergeUnconsumedInput(
+  previous: Input | undefined,
+  next: Input,
+): Input {
+  return {
+    ...next,
+    kick: next.kick || previous?.kick === true,
+    wave: next.wave || previous?.wave === true,
+  };
+}
 export class Zoomap {
   readonly view: WorldView;
   status: ConnectionState = "idle";
@@ -67,6 +83,15 @@ export class Zoomap {
   private input = idleInput();
   private inputs: Record<string, Input> = {};
   private inputAt: Record<string, number> = {};
+  private inputSequence = 0;
+  private inputSequences: Record<string, number> = {};
+  private inputAcks: Record<string, number> = {};
+  private prediction: { sequence: number; input: Input }[] = [];
+  private previousState?: Simulation;
+  private previousLocal?: Body;
+  private correction = { x: 0, y: 0, z: 0 };
+  private hostHealthy = true;
+  private healthySince = 0;
   private actionCommands: ActionCommand[] = [];
   private actionSequence = 0;
   private toolPressed = false;
@@ -162,7 +187,10 @@ export class Zoomap {
       "visibilitychange",
       () => {
         this.clearInput();
-        this.send({ type: "heartbeat", eligible: !document.hidden });
+        this.send({
+          type: "heartbeat",
+          eligible: !document.hidden && this.hostHealthy,
+        });
       },
       { signal },
     );
@@ -233,9 +261,10 @@ export class Zoomap {
         this.send({
           type: "join",
           version: 1,
-          ...(this.options.map.actionCatalog
-            ? { capabilities: ["actions-v1"] }
-            : {}),
+          capabilities: [
+            "input-ack-v1",
+            ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
+          ],
           room: this.address!.room,
           credential,
         });
@@ -250,8 +279,22 @@ export class Zoomap {
           return;
         }
         if (m.type === "welcome") {
+          if (
+            !Array.isArray(m.capabilities) ||
+            !m.capabilities.includes("input-ack-v1")
+          ) {
+            this.stopped = true;
+            this.setStatus(
+              "failed",
+              "Room service needs the input-ack-v1 protocol update",
+            );
+            ws.close(4400, "Input acknowledgement protocol required");
+            return;
+          }
           this.session = m.session;
           this.actionSequence = 0;
+          this.inputSequence = 0;
+          this.prediction = [];
           this.toolPressed = false;
           this.pendingAim = undefined;
         }
@@ -260,6 +303,7 @@ export class Zoomap {
           this.epoch = m.epoch;
           this.roster = m.roster;
           this.state = m.state;
+          this.previousState = structuredClone(this.state);
           this.presentation.reset();
           this.presentation.push(this.state, performance.now());
           this.durable = m.durable;
@@ -268,6 +312,25 @@ export class Zoomap {
             : undefined;
           this.inputs = {};
           this.inputAt = {};
+          this.inputSequences = {};
+          this.inputAcks = m.inputAcks ?? {};
+          for (const [session, sample] of Object.entries(m.inputs ?? {}) as [
+            string,
+            { input: Input; sequence: number; ageMs: number },
+          ][]) {
+            this.inputs[session] = sample.input;
+            this.inputSequences[session] = sample.sequence;
+            this.inputAt[session] = performance.now() - sample.ageMs;
+          }
+          this.prediction = this.prediction.filter(
+            (sample) => sample.sequence > (this.inputAcks[this.session] ?? 0),
+          );
+          if (this.host !== this.session)
+            this.reconcile(m.inputAcks?.[this.session]);
+          else this.prediction = [];
+          this.previousLocal = this.local ? { ...this.local } : undefined;
+          this.correction = { x: 0, y: 0, z: 0 };
+          this.accumulator = 0;
           this.actionCommands =
             this.host === this.session ? (m.actionCommands ?? []) : [];
           this.lastStateAt = performance.now();
@@ -293,23 +356,21 @@ export class Zoomap {
           if (this.host !== this.session) {
             this.state = m.state;
             this.presentation.push(this.state, performance.now());
-            const authoritative = this.state.players[this.session];
-            if (authoritative && this.local) {
-              const error = Math.hypot(
-                authoritative.x - this.local.x,
-                authoritative.z - this.local.z,
-              );
-              const amount = error > 2 ? 1 : 0.22;
-              this.local.x += (authoritative.x - this.local.x) * amount;
-              this.local.z += (authoritative.z - this.local.z) * amount;
-              this.local.y = authoritative.y;
-              this.local.vy = authoritative.vy;
-            }
+            this.reconcile(m.inputAcks?.[this.session]);
           }
           if (this.host) this.setStatus("ready");
         } else if (m.type === "input") {
-          this.inputs[m.session] = m.input;
+          if (
+            m.sequence <= (this.inputAcks[m.session] ?? 0) ||
+            m.sequence <= (this.inputSequences[m.session] ?? 0)
+          )
+            return;
+          this.inputs[m.session] = mergeUnconsumedInput(
+            this.inputs[m.session],
+            m.input,
+          );
           this.inputAt[m.session] = performance.now();
+          this.inputSequences[m.session] = m.sequence ?? 0;
         } else if (
           m.type === "action" &&
           m.epoch === this.epoch &&
@@ -384,6 +445,71 @@ export class Zoomap {
   setInput(x: number, y: number) {
     if (!this.disabled) Object.assign(this.input, screenToWorld(x, y));
   }
+  /** World-space horizontal direction, normalized to walking speed. */
+  setWorldInput(x: number, z: number) {
+    if (this.disabled) return;
+    const input = normalizeInput({ x, z, kick: false, wave: false });
+    this.input.x = input.x;
+    this.input.z = input.z;
+  }
+  private sendInput(input: Input) {
+    const sequence = ++this.inputSequence;
+    this.send({ type: "input", sequence, input });
+    return sequence;
+  }
+  private predict(body: Body, input: Input, age = 0) {
+    const action = this.state.actions?.players[this.session];
+    const locked = actionMovementLocked(action);
+    const impulse =
+      !locked && action
+        ? {
+            x: action.impulse.x * Math.exp(-5 * age * STEP),
+            z: action.impulse.z * Math.exp(-5 * age * STEP),
+          }
+        : undefined;
+    movePlayer(
+      this.options.map,
+      body,
+      locked ? idleInput() : input,
+      STEP,
+      this.durable.items,
+      this.options.catalog,
+      impulse,
+    );
+    if (locked && action) body.facing = Math.atan2(action.aim.x, action.aim.z);
+  }
+  private reconcile(ack?: number) {
+    const authoritative = this.state.players[this.session];
+    if (!authoritative) return;
+    const before = this.local;
+    if (ack !== undefined)
+      this.prediction = this.prediction.filter(
+        (sample) => sample.sequence > ack,
+      );
+    const corrected = { ...authoritative };
+    // Replay only movement that the authoritative checkpoint has not yet consumed.
+    for (const [age, sample] of this.prediction.entries())
+      this.predict(corrected, sample.input, age);
+    this.local = corrected;
+    if (before) {
+      const dx = before.x - corrected.x,
+        dy = before.y - corrected.y,
+        dz = before.z - corrected.z;
+      if (Math.hypot(dx, dy, dz) < 2) {
+        this.correction.x += dx;
+        this.correction.y += dy;
+        this.correction.z += dz;
+        if (this.previousLocal) {
+          this.previousLocal.x -= dx;
+          this.previousLocal.y -= dy;
+          this.previousLocal.z -= dz;
+        }
+      } else {
+        this.correction = { x: 0, y: 0, z: 0 };
+        this.previousLocal = { ...corrected };
+      }
+    }
+  }
   action(action: "kick" | "wave") {
     if (!this.disabled && this.status === "ready") this.input[action] = true;
   }
@@ -450,7 +576,7 @@ export class Zoomap {
     this.cancelTool();
     this.keys.clear();
     this.input = idleInput();
-    this.send({ type: "input", input: this.input });
+    this.sendInput(this.input);
   }
   private currentInput() {
     if (this.disabled || document.hidden) return idleInput();
@@ -469,14 +595,29 @@ export class Zoomap {
   private animate = (time: number) => {
     if (this.disposed) return;
     this.frame = requestAnimationFrame(this.animate);
-    const elapsed = Math.min((time - this.last) / 1000, 0.1);
+    const frameMs = Math.max(0, time - this.last);
+    const elapsed = Math.min(frameMs / 1000, 0.25);
     this.last = time;
+    if (frameMs > 250 && !this.stopped) {
+      this.hostHealthy = false;
+      this.healthySince = 0;
+      this.accumulator = 0;
+      this.send({ type: "heartbeat", eligible: false });
+      if (this.host === this.session)
+        this.setStatus(
+          "paused",
+          "Moving shared simulation to an active browser",
+        );
+    } else if (!this.hostHealthy && frameMs < 100) {
+      if (!this.healthySince) this.healthySince = time;
+      if (time - this.healthySince > 1000) this.hostHealthy = true;
+    } else if (!this.hostHealthy) this.healthySince = 0;
     if (document.hidden) {
       this.accumulator = 0;
       return;
     }
     if (!this.stopped && time - this.heartbeatAt > 700) {
-      this.send({ type: "heartbeat", eligible: true });
+      this.send({ type: "heartbeat", eligible: this.hostHealthy });
       this.heartbeatAt = time;
     }
     if (
@@ -498,19 +639,24 @@ export class Zoomap {
       this.accumulator += elapsed;
       while (this.accumulator >= STEP) {
         const input = this.currentInput();
-        this.send({ type: "input", input });
+        const sequence = this.sendInput(input);
         this.input.kick = false;
         this.input.wave = false;
         if (this.host === this.session) {
           for (const id of Object.keys(this.inputs))
             if (time - (this.inputAt[id] ?? 0) > 250)
               this.inputs[id] = idleInput();
-          // Local movement responds immediately; shared actions still arrive through relay identity stamping.
-          this.inputs[this.session] = {
-            ...input,
-            kick: this.inputs[this.session]?.kick ?? false,
-            wave: input.wave || (this.inputs[this.session]?.wave ?? false),
-          };
+          // Consume this exact local sample before acknowledging its sequence. The relay echo
+          // can arrive later; it must not reintroduce an already-consumed kick or wave.
+          const pendingLocal =
+            (this.inputSequences[this.session] ?? 0) >
+            (this.inputAcks[this.session] ?? 0)
+              ? this.inputs[this.session]
+              : undefined;
+          this.inputs[this.session] = mergeUnconsumedInput(pendingLocal, input);
+          this.inputSequences[this.session] = sequence;
+          this.previousState = structuredClone(this.state);
+          this.previousLocal = this.local ? { ...this.local } : undefined;
           stepWorld(
             this.options.map,
             this.state,
@@ -527,6 +673,7 @@ export class Zoomap {
             i.kick = false;
             i.wave = false;
           }
+          this.inputAcks = { ...this.inputSequences };
           this.local = this.state.players[this.session]
             ? { ...this.state.players[this.session] }
             : undefined;
@@ -535,33 +682,42 @@ export class Zoomap {
               type: "snapshot",
               epoch: this.epoch,
               state: this.state,
+              inputAcks: this.inputAcks,
             });
-        } else if (this.local)
-          movePlayer(
-            this.options.map,
-            this.local,
-            input,
-            STEP,
-            this.durable.items,
-            this.options.catalog,
-            this.state.actions?.players[this.session]?.impulse,
-          );
+        } else if (this.local) {
+          this.previousLocal = { ...this.local };
+          this.prediction.push({ sequence, input: { ...input } });
+          if (this.prediction.length > 90) this.prediction.shift();
+          this.predict(this.local, input);
+        }
         this.accumulator -= STEP;
       }
     } else this.accumulator = 0;
-    if (this.local)
+    if (this.local) {
+      const alpha = Math.max(0, Math.min(1, this.accumulator / STEP));
+      const shownLocal = this.previousLocal
+        ? interpolateBody(this.previousLocal, this.local, alpha)
+        : { ...this.local };
+      const decay = Math.exp(-12 * elapsed);
+      for (const axis of ["x", "y", "z"] as const) {
+        this.correction[axis] *= decay;
+        shownLocal[axis] += this.correction[axis];
+      }
       this.view.render(
         this.host === this.session
-          ? this.state
+          ? this.previousState
+            ? interpolateSimulation(this.previousState, this.state, alpha)
+            : this.state
           : (this.presentation.sample(time) ?? this.state),
         this.roster,
         this.session,
-        this.local,
+        shownLocal,
         this.durable.items,
         this.durable.revision,
         time,
         matchMedia("(prefers-reduced-motion: reduce)").matches,
       );
+    }
   };
   preview(placement?: Placement) {
     const error = placement
@@ -604,6 +760,12 @@ export class Zoomap {
     }
     this.pending.clear();
     this.actionCommands = [];
+    this.prediction = [];
+    this.previousState = undefined;
+    this.previousLocal = undefined;
+    this.correction = { x: 0, y: 0, z: 0 };
+    this.hostHealthy = true;
+    this.healthySince = 0;
     this.pendingAim = undefined;
     this.session = "";
     this.roster = [];

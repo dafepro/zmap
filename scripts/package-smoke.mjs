@@ -18,7 +18,7 @@ try {
   );
   run("npm", ["install", join(dir, "zmap-0.1.0.tgz"), "--ignore-scripts"]);
   const source =
-    "import { Zoomap } from 'zmap'; import { createRoomService } from 'zmap/server'; import { validateMap } from 'zmap/core'; if ([Zoomap,createRoomService,validateMap].some(f => typeof f !== 'function')) throw Error('Missing export');";
+    "import { Zoomap, findWalkPath, canWalkSegment, actionMovementLocked, WAKE_MOTION } from 'zmap'; import { createRoomService } from 'zmap/server'; import { validateMap } from 'zmap/core'; if ([Zoomap,createRoomService,validateMap,findWalkPath,canWalkSegment,actionMovementLocked,Zoomap.prototype.setWorldInput].some(f => typeof f !== 'function')) throw Error('Missing export'); if (WAKE_MOTION.jumpSpeed <= 0) throw Error('Missing motion contract');";
   writeFileSync(join(dir, "check.mjs"), source);
   run("node", ["check.mjs"]);
   writeFileSync(join(dir, "check.ts"), source);

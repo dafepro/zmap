@@ -56,6 +56,12 @@ type Peer = {
   actionSequence: number;
   actionWindowAt: number;
   actionCount: number;
+  inputSequence: number;
+  input?: ReturnType<typeof normalizeInput>;
+  inputAt: number;
+  kickSequence: number;
+  waveSequence: number;
+  acknowledgesInput: boolean;
 };
 type Room = {
   id: string;
@@ -68,6 +74,10 @@ type Room = {
   actionSequence: number;
   pendingActions: ActionCommand[];
   actionCooldowns: Map<string, PlayerActionState["cooldowns"]>;
+  inputAcks: Record<string, number>;
+  progressAt: number;
+  progressTick: number;
+  acknowledgesInput: boolean;
 };
 export function createRoomService(options: ServiceOptions) {
   validateMap(options.map);
@@ -165,6 +175,25 @@ export function createRoomService(options: ServiceOptions) {
     })),
     state: room.state,
     durable: layout(room.durable),
+    inputAcks: room.inputAcks,
+    inputs: Object.fromEntries(
+      [...room.peers.values()]
+        .filter((peer) => peer.input && Date.now() - peer.inputAt <= 250)
+        .map((peer) => [
+          peer.id,
+          {
+            input: room.acknowledgesInput
+              ? {
+                  ...peer.input!,
+                  kick: peer.kickSequence > (room.inputAcks[peer.id] ?? 0),
+                  wave: peer.waveSequence > (room.inputAcks[peer.id] ?? 0),
+                }
+              : peer.input,
+            sequence: peer.inputSequence,
+            ageMs: Date.now() - peer.inputAt,
+          },
+        ]),
+    ),
     ...(options.map.actionCatalog
       ? { actionCommands: room.pendingActions }
       : {}),
@@ -176,6 +205,8 @@ export function createRoomService(options: ServiceOptions) {
       )?.id ?? null;
     room.epoch++;
     room.lastSnapshot = Date.now();
+    room.progressAt = Date.now();
+    room.progressTick = room.state.tick;
     metrics.elections++;
   };
   const depart = (room: Room, peer: Peer) => {
@@ -190,6 +221,7 @@ export function createRoomService(options: ServiceOptions) {
         room.actionCooldowns.delete(room.actionCooldowns.keys().next().value!);
     }
     delete room.state.players[peer.id];
+    delete room.inputAcks[peer.id];
     syncActionPlayers(room.state);
     room.pendingActions = room.pendingActions.filter(
       (command) => command.session !== peer.id,
@@ -274,6 +306,16 @@ export function createRoomService(options: ServiceOptions) {
               return;
             }
             room = rooms.get(message.room);
+            const acknowledgesInput =
+              Array.isArray(message.capabilities) &&
+              message.capabilities.includes("input-ack-v1");
+            if (room && room.acknowledgesInput !== acknowledgesInput) {
+              ws.close(
+                4400,
+                "Incompatible room input protocol; update all room clients",
+              );
+              return;
+            }
             if (!room) {
               if (rooms.size + loadingRooms.size >= 100) {
                 ws.close(4429, "Service full");
@@ -298,6 +340,10 @@ export function createRoomService(options: ServiceOptions) {
                 actionSequence: 0,
                 pendingActions: [],
                 actionCooldowns: new Map(),
+                inputAcks: {},
+                progressAt: Date.now(),
+                progressTick: 0,
+                acknowledgesInput,
               };
               rooms.set(room.id, room);
             }
@@ -332,6 +378,11 @@ export function createRoomService(options: ServiceOptions) {
               actionSequence: 0,
               actionWindowAt: Date.now(),
               actionCount: 0,
+              inputSequence: 0,
+              inputAt: 0,
+              kickSequence: 0,
+              waveSequence: 0,
+              acknowledgesInput,
             };
             room.peers.set(peer.id, peer);
             room.state.players[peer.id] = bodyAt(options.map.spawn);
@@ -341,7 +392,14 @@ export function createRoomService(options: ServiceOptions) {
               room.state.actions.players[peer.id].cooldowns = { ...cooldowns };
             if (!room.host) elect(room);
             clearTimeout(joinTimeout);
-            send(ws, { type: "welcome", session: peer.id });
+            send(ws, {
+              type: "welcome",
+              session: peer.id,
+              capabilities: [
+                ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
+                ...(options.map.actionCatalog ? ["actions-v1"] : []),
+              ],
+            });
             broadcast(room, metadata(room));
             return;
           }
@@ -361,12 +419,27 @@ export function createRoomService(options: ServiceOptions) {
               broadcast(room, metadata(room));
             }
           } else if (message.type === "input") {
+            if (message.sequence !== undefined) {
+              if (
+                !Number.isSafeInteger(message.sequence) ||
+                message.sequence < 1
+              )
+                throw Error("Invalid input sequence");
+              if (message.sequence <= peer.inputSequence) return;
+              peer.inputSequence = message.sequence;
+            } else if (peer.acknowledgesInput)
+              throw Error("Input sequence required");
+            peer.input = normalizeInput(message.input);
+            if (peer.input.kick) peer.kickSequence = peer.inputSequence;
+            if (peer.input.wave) peer.waveSequence = peer.inputSequence;
+            peer.inputAt = Date.now();
             const host = room.host ? room.peers.get(room.host) : undefined;
             if (host)
               send(host.ws, {
                 type: "input",
                 session: peer.id,
-                input: normalizeInput(message.input),
+                input: peer.input,
+                sequence: peer.inputSequence,
               });
           } else if (message.type === "action") {
             if (!options.map.actionCatalog || message.epoch !== room.epoch)
@@ -392,6 +465,27 @@ export function createRoomService(options: ServiceOptions) {
             if (host)
               send(host.ws, { type: "action", epoch: room.epoch, command });
           } else if (message.type === "snapshot") {
+            const acknowledgments = message.inputAcks;
+            if (peer.acknowledgesInput || acknowledgments !== undefined) {
+              if (
+                !acknowledgments ||
+                typeof acknowledgments !== "object" ||
+                Array.isArray(acknowledgments) ||
+                Object.keys(acknowledgments).some(
+                  (session) => !room!.peers.has(session),
+                )
+              )
+                throw Error("Invalid input acknowledgements");
+              for (const [session, value] of Object.entries(acknowledgments)) {
+                const owner = room.peers.get(session)!;
+                if (
+                  !Number.isSafeInteger(value) ||
+                  (value as number) < (room.inputAcks[session] ?? 0) ||
+                  (value as number) > owner.inputSequence
+                )
+                  throw Error("Invalid input acknowledgement range");
+              }
+            }
             if (
               room.host !== peer.id ||
               message.epoch !== room.epoch ||
@@ -447,11 +541,14 @@ export function createRoomService(options: ServiceOptions) {
               );
             }
             room.lastSnapshot = Date.now();
+            if (acknowledgments)
+              room.inputAcks = { ...room.inputAcks, ...acknowledgments };
             metrics.snapshots++;
             broadcast(room, {
               type: "snapshot",
               epoch: room.epoch,
               state: room.state,
+              inputAcks: room.inputAcks,
             });
           } else if (message.type === "edit") {
             const next = await options.store.commit(
@@ -520,14 +617,23 @@ export function createRoomService(options: ServiceOptions) {
             depart(room, peer);
           }
         }
+        const now = Date.now(),
+          progressMs = now - room.progressAt;
+        // Publishing a token snapshot once per second is not a healthy 30 Hz simulation lease.
+        const slowProgress =
+          progressMs >= 1200 &&
+          room.state.tick - room.progressTick < progressMs * 0.015;
         if (
           room.host &&
-          Date.now() - room.lastSnapshot > (options.leaseMs ?? 2400)
+          (now - room.lastSnapshot > (options.leaseMs ?? 2400) || slowProgress)
         ) {
           const old = room.peers.get(room.host);
           if (old) old.eligible = false;
           elect(room);
           broadcast(room, metadata(room));
+        } else if (progressMs >= 1200) {
+          room.progressAt = now;
+          room.progressTick = room.state.tick;
         }
       });
   }, 250);
