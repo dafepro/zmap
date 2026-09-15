@@ -15,7 +15,8 @@
 - Avatar typecheck, formatting and 154 unit tests passed.
 - Both independent tarball consumers passed ESM/declarations/build checks. Avatar consumer additionally rendered skinned/textured models, exact grips and approved asset integrity through the public asset export.
 - All 30 world browser journeys passed after the split, including shared actions, cannon, source/directional review, lifecycle, persistence, host recovery, sprint and navigation.
-- Independent Avatar Studio browser suite and fresh-checkout verification are recorded below when complete.
+- All 44 independent Avatar Studio browser journeys passed.
+- A fresh local clone initialized the recorded avatar commit, ran both clean `npm ci` installs, and passed the complete world production build without pre-existing lib/assets or lockfile changes. The clone used local Git object transport to avoid re-downloading the retained Blender history; the same avatar commit is published on GitHub.
 
 ## Integration starting point
 
