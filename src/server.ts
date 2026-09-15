@@ -203,15 +203,18 @@ export function createRoomService(options: ServiceOptions) {
       : {}),
   });
   const elect = (room: Room) => {
-    room.host =
+    const nextHost =
       [...room.peers.values()].find(
         (p) => p.eligible && Date.now() - p.seen < (options.leaseMs ?? 2400),
       )?.id ?? null;
+    if (nextHost === room.host) return false;
+    room.host = nextHost;
     room.epoch++;
     room.lastSnapshot = Date.now();
     room.progressAt = Date.now();
     room.progressTick = room.state.tick;
     metrics.elections++;
+    return true;
   };
   const depart = (room: Room, peer: Peer) => {
     if (!room.peers.delete(peer.id)) return;
@@ -459,8 +462,7 @@ export function createRoomService(options: ServiceOptions) {
           if (message.type === "heartbeat") {
             peer.eligible = message.eligible === true;
             if ((!peer.eligible && room.host === peer.id) || !room.host) {
-              elect(room);
-              broadcast(room, metadata(room));
+              if (elect(room)) broadcast(room, metadata(room));
             }
           } else if (message.type === "input") {
             if (message.input?.sprint !== undefined && !peer.supportsSprint)
