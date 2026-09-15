@@ -18,7 +18,9 @@ Walking now uses adapted Quaternius `Walk_Loop`, with full-stride reverse walkin
 
 ## Evidence and limits
 
-The last feature baseline passed 109 world unit tests, 154 avatar unit tests and the focused directional/source browser review. Earlier full browser runs covered 30 world and 44 studio journeys; those historical counts do not imply a new run. Cleanup verification is recorded in [repository cleanup](repository-cleanup.md).
+Cleanup validation passed 109 world unit/socket tests, 154 avatar unit tests, 30 world browser journeys and 44 avatar browser journeys locally. Independent Avatar Studio Linux CI passed once, but another run of the same commit timed out in two browser tests; repeatability remains open. Both public release tarballs were installed together in an empty consumer, with working public imports and catalog resolution. See [repository cleanup](repository-cleanup.md) for scope.
+
+**Open integration qualification blocker:** the world Linux CI run at `a58a1e9` passed builds, units, package checks and isolated entry, but failed 17 of 31 browser tests (including the new entry diagnostic). In a multi-client trace the second client stayed at “Connecting…”. Local browser success does not resolve this discrepancy. [CI investigation](ci-browser-investigation.md) records evidence and next checks; do not claim cross-platform multiplayer qualification until resolved.
 
 [Multiplayer coverage](multiplayer-coverage.md) distinguishes tests from requirements. Host loss, late join, input replay, room isolation, durable retry/restart and selected message-shaped browser journeys have evidence. Twenty connected sockets is not twenty rendered avatars on a phone.
 

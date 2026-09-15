@@ -9,6 +9,8 @@ For the Zoomigo integration, read these maintained guides in order:
 5. [Team World handoff](zoomigo-v3-agent-prompt.md) — independent v3 implementation brief.
 6. [Current readiness](status.md), [multiplayer evidence boundaries](multiplayer-coverage.md), and [operations](operations.md).
 
+[Limited Zoomigo source survey](zoomigo-source-check.md) identifies the current lounge, avatar gateway and Worker/backend seams to audit.
+
 World-specific extensions: [navigation](navigation.md), [field tools](field-tools.md), [world objects](world-objects.md), [cannon](cannon-integration.md), and [shared performances](shared-performances.md).
 
 Avatar contracts, fitting, assets and animation are maintained in [zmap-avatar-studio](https://github.com/dafepro/zmap-avatar-studio). The local `../avatar-studio/` checkout is the exact version pinned by zmap, not another source of truth.

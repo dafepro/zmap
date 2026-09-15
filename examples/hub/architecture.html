@@ -1009,13 +1009,15 @@ library.dispose();</code></pre>
             <h3>Modular characters</h3>
             <p>
               Approved component kit, body builds, fitting, expressive equipment
-              and reference-based motion. Latest walking change passed 154
-              avatar tests and both focused browser review suites.
+              and reference-based motion. Cleanup validation passed 154 avatar
+              unit tests and all 44 studio browser journeys locally; independent
+              avatar Linux CI passed once, with two timeouts in a repeat run.
             </p>
             <p>
               <small
-                >Evidence baseline: <code>f135c7c</code>. Counts describe that
-                run, not a new certification.</small
+                >The
+                <a data-source="docs/repository-cleanup.md">cleanup record</a>
+                identifies test scope and package verification.</small
               >
             </p>
           </article>
@@ -1025,7 +1027,12 @@ library.dispose();</code></pre>
             <p>
               Real Zoomigo credentials, database writes, saved looks,
               deployment/restart handling and physical-phone performance
-              qualification remain.
+              qualification remain. World Linux CI currently fails 17 of 31
+              browser cases;
+              <a data-source="docs/ci-browser-investigation.md"
+                >the investigation</a
+              >
+              is an open integration gate.
             </p>
             <p>
               <small
@@ -1104,6 +1111,8 @@ Integrate the current zmap world runtime and modular Avatar Studio into `dafepro
 
 Start by reading each repository&#x27;s AGENTS.md and current source-of-truth docs. Use `main` in `dafepro/zmap` and `dafepro/zmap-avatar-studio`; record their commits and the Zoomigo commit. For zmap development clone with `--recurse-submodules`. In zmap, read `examples/hub/architecture.html`, `docs/api.md`, `docs/operations.md`, `docs/multiplayer-coverage.md`, `docs/shared-performances.md`, and `avatar-studio/README.md` plus its contracts, accessory-fitting, wielding and motion docs. Read the original intent/specs/handoff as background; this fresh-v3 instruction supersedes their migration requirements. Reconcile historical status entries against current code and test evidence. Audit Zoomigo&#x27;s actual lounge routes, authentication, team authorization, deployment, inventory and appearance storage before choosing adapters.
 
+Read `docs/zoomigo-source-check.md` for the limited source survey at Zoomigo commit `7853c13a4e2c6c15fe6a27e1bb7a3f1ad32cc437`. Its frontend uses Vinext/Vite and a Cloudflare Worker, with an existing backend and Canvas-specific lounge transport. Do not import the Node room service directly into the Worker or wrap the new client in the Canvas transport. Audit and choose the actual relay/backend deployment seam. The existing avatar save gateway uses a different configuration schema; define a versioned v3 recipe contract. Recheck all these observations against the current Zoomigo commit.
+
 Keep these boundaries:
 
 - **Zoomigo** owns identity, team membership, private room access, inventory/unlocks, approved appearance choices, persistence and all reward/training policy.
@@ -1117,6 +1126,8 @@ Replace example identities/tokens and the example file store with real app adapt
 
 Install the versioned v0.1.1 GitHub Release tarballs using `docs/integration-packages.md`; the packages remain private to prevent accidental npm-registry publication. Verify pinned package delivery and static asset serving in Zoomigo CI. The avatar submodule is for development and source qualification, not a production dependency. Account for a persistent WebSocket relay and one writer per room; do not assume a stateless deployment or multiple uncoordinated relay replicas will work. Document database write deadlines, unknown-outcome reconciliation, service restart behavior and a pilot disable/rollback procedure that preserves new v3 data. This is deployment rollback, not Canvas conversion.
 
+Resolve the open world Linux browser qualification gap documented in `docs/ci-browser-investigation.md` before claiming pilot readiness. Local suites passed, but the retained Linux multi-client run has entry/control failures; preserve recovery requirements while investigating.
+
 Track implementation and acceptance evidence in the repositories. Test real separate authenticated users, cross-team/expired-access denial, same-user tab replacement, late join, simultaneous tool interactions, host closure/stall, reconnect, sprint release, room isolation, persisted layout after restart, lost edit acknowledgments, saved appearance validation and repeated route mount/unmount. Review all movement directions with held gear. Run package, unit and browser suites appropriate to the changes. Qualify the proposed full-room phone/network/load/cost budgets on named hardware; desktop CI and the existing 20-socket test do not establish mobile production readiness. State unmeasured targets explicitly.
 
 Proceed in working increments, resolve ordinary design choices autonomously, and finish with a runnable demo, integration docs, tests, measured limitations and release steps. Commit and push zmap only as dafepro using repository-local Git identity/credentials; follow Zoomigo&#x27;s own repository rules without changing machine-wide accounts.
@@ -1124,8 +1135,12 @@ Proceed in working increments, resolve ordinary design choices autonomously, and
           </details>
         </div>
         <p class="muted">
-          This guide describes the local zmap implementation. It does not claim
-          a fresh audit of Zoomigo’s current branch; that audit is the
+          A
+          <a data-source="docs/zoomigo-source-check.md"
+            >limited Zoomigo source survey</a
+          >
+          identifies the current Vinext/Worker frontend, lounge and avatar
+          gateway. A complete authorization and deployment audit remains the
           integration agent’s first step.
         </p>
       </section>
