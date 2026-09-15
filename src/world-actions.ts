@@ -440,6 +440,10 @@ export function stepActions(
       if (performance && config && !actionMovementLocked(p)) {
         cancel(state, command.session);
         performance.emote = null;
+        if (intent.drawn && !performance.drawn) {
+          p.aim = { x: Math.sin(body.facing), z: Math.cos(body.facing) };
+          p.aimManual = false;
+        }
         setPerformanceDrawn(
           performance,
           !!p.tool && intent.drawn,
@@ -453,6 +457,8 @@ export function stepActions(
       if (p.tool !== intent.tool) {
         cancel(state, command.session);
         p.tool = intent.tool;
+        p.aim = { x: Math.sin(body.facing), z: Math.cos(body.facing) };
+        p.aimManual = false;
         if (performance && config) {
           performance.emote = null;
           // New complete loadout starts at its retained stow target, then draws.

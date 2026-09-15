@@ -28,6 +28,8 @@ export type WorldObject = {
   config: ObjectValue;
   /** Local boxes affect balls only. Avatar navigation and collisions ignore them. */
   toyColliders?: ObjectCollider[];
+  /** Local boxes shared by player movement and path planning. */
+  playerColliders?: ObjectCollider[];
 };
 export type ObjectEvent = {
   id: number;
@@ -192,6 +194,7 @@ export function validateWorldObjects(
         "rotation",
         "config",
         ...(object.toyColliders === undefined ? [] : ["toyColliders"]),
+        ...(object.playerColliders === undefined ? [] : ["playerColliders"]),
       ]) ||
       !objectId(object.id) ||
       ids.has(object.id) ||
@@ -204,20 +207,22 @@ export function validateWorldObjects(
       !boundedObjectValue(object.config, 2048)
     )
       throw Error("Invalid world object");
-    if (
-      object.toyColliders !== undefined &&
-      (!Array.isArray(object.toyColliders) ||
-        object.toyColliders.length > 8 ||
-        object.toyColliders.some(
-          (collider) =>
-            !exactObject(collider, ["center", "size"]) ||
-            !validVec(collider.center) ||
-            !validVec(collider.size) ||
-            Object.values(collider.size).some((n) => n <= 0 || n > 8) ||
-            Object.values(collider.center).some((n) => Math.abs(n) > 8),
-        ))
-    )
-      throw Error("Invalid world object toy colliders");
+    for (const colliders of [object.toyColliders, object.playerColliders]) {
+      if (
+        colliders !== undefined &&
+        (!Array.isArray(colliders) ||
+          colliders.length > 8 ||
+          colliders.some(
+            (collider) =>
+              !exactObject(collider, ["center", "size"]) ||
+              !validVec(collider.center) ||
+              !validVec(collider.size) ||
+              Object.values(collider.size).some((n) => n <= 0 || n > 8) ||
+              Object.values(collider.center).some((n) => Math.abs(n) > 8),
+          ))
+      )
+        throw Error("Invalid world object colliders");
+    }
     implementation(object, behaviors).validateConfig(
       object.config,
       object,

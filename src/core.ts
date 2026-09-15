@@ -5,6 +5,7 @@ import {
   validWorldObjectState,
   validateWorldObjects,
   worldToyColliders,
+  objectLocalPoint,
   type ObjectBehaviors,
   type WorldObject,
   type WorldObjectState,
@@ -289,6 +290,18 @@ function blocked(
     )
   )
     return true;
+  for (const object of map.objects ?? []) {
+    const local = objectLocalPoint(object, { x, y, z });
+    for (const box of object.playerColliders ?? []) {
+      if (
+        Math.abs(local.x - box.center.x) < box.size.x / 2 + radius &&
+        Math.abs(local.z - box.center.z) < box.size.z / 2 + radius &&
+        local.y < box.center.y + box.size.y / 2 - 0.02 &&
+        local.y + height > box.center.y - box.size.y / 2 + 0.02
+      )
+        return true;
+    }
+  }
   if (
     map.surfaces.some(
       (s) =>
@@ -439,6 +452,11 @@ export function stepWorld(
       catalog,
       actionMovementLocked(action) ? undefined : action?.impulse,
     );
+    if (action?.tool && action.performance?.drawn !== false) {
+      if (!action.aimManual && !action.held && !actionMovementLocked(action))
+        action.aim = { x: Math.sin(b.facing), z: Math.cos(b.facing) };
+      b.facing = Math.atan2(action.aim.x, action.aim.z);
+    }
   }
   finishActions(map, state, items, catalog);
   for (const t of [...map.toys].sort((a, b) =>

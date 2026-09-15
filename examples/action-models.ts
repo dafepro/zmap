@@ -28,9 +28,7 @@ export function fieldCharacterMotion(
   action: PlayerActionState | undefined,
   tick: number,
   reducedMotion = false,
-  facing = action?.tool && action.performance?.drawn !== false
-    ? Math.atan2(action.aim.x, action.aim.z)
-    : body.facing,
+  facing = body.facing,
 ): Motion {
   const pose: NonNullable<Motion["pose"]> = {};
   const phase = action?.phase;
@@ -41,10 +39,6 @@ export function fieldCharacterMotion(
         1,
       )
     : 0;
-  if (phase === "braced")
-    Object.assign(pose, { crouch: 0.24, lean: 0.15, stance: 0.7 });
-  if (phase === "reeling")
-    Object.assign(pose, { crouch: 0.16, lean: -0.22, stance: 0.4 });
   if (phase === "charging")
     Object.assign(pose, {
       crouch: 0.68 * progress,
@@ -80,6 +74,7 @@ export function fieldCharacterMotion(
   }
   return {
     reducedMotion,
+    carryLean: phase === "braced" ? 0.15 : phase === "reeling" ? -0.22 : 0,
     velocity: {
       x: body.vx * Math.cos(facing) - body.vz * Math.sin(facing),
       z: body.vx * Math.sin(facing) + body.vz * Math.cos(facing),
@@ -423,10 +418,7 @@ export async function loadActionKit(
               (tick - action.performance.equipmentStarted) / 30,
             ),
           });
-        const targetFacing =
-          action?.tool && action.performance?.drawn !== false
-            ? Math.atan2(action.aim.x, action.aim.z)
-            : body.facing;
+        const targetFacing = body.facing;
         const dt =
           previousTime === undefined
             ? 0

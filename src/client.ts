@@ -563,7 +563,14 @@ export class Zoomap {
       this.options.catalog,
       impulse,
     );
-    if (locked && action) body.facing = Math.atan2(action.aim.x, action.aim.z);
+    if (
+      action &&
+      (locked ||
+        (action.tool &&
+          action.performance?.drawn !== false &&
+          (action.aimManual || action.held)))
+    )
+      body.facing = Math.atan2(action.aim.x, action.aim.z);
   }
   private reconcile(ack?: number) {
     const authoritative = this.state.players[this.session];

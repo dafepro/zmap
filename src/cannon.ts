@@ -511,7 +511,18 @@ export function cannonObject(
     position,
     rotation,
     config: cannonConfig(acceptedToys) as unknown as ObjectValue,
+    playerColliders: [
+      { center: { x: 0, y: 0.9, z: 0 }, size: { x: 1.85, y: 1.8, z: 2.25 } },
+    ],
     toyColliders: [
+      {
+        center: { x: -0.7, y: 0.36, z: 0.18 },
+        size: { x: 0.25, y: 0.72, z: 0.72 },
+      },
+      {
+        center: { x: 0.7, y: 0.36, z: 0.18 },
+        size: { x: 0.25, y: 0.72, z: 0.72 },
+      },
       { center: { x: 0, y: 0.5, z: 0.68 }, size: { x: 0.95, y: 1, z: 0.3 } },
     ],
   };

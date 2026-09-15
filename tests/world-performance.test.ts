@@ -298,3 +298,29 @@ test("fractional performance display time stays between accepted snapshots and f
   assert.equal(JSON.stringify(half).includes("presentationTick"), false);
   assert.equal(presentationTickFor(structuredClone(half)), half.tick);
 });
+
+test("equip, stow, draw and emotes preserve authoritative facing instead of switching to stale aim", () => {
+  for (const facing of [-Math.PI / 2, 0, Math.PI / 2, Math.PI]) {
+    const s = setup(),
+      body = s.state.players.a;
+    body.facing = facing;
+    s.player.aim = { x: 1, z: 0 };
+    s.player.aimManual = true;
+    s.step(s.command({ kind: "equip", tool: "rebound-panel" }));
+    assert.ok(Math.abs(body.facing - facing) < 1e-8);
+    s.advance(32);
+    const aim = facing + 0.4;
+    s.step(s.command({ kind: "aim", x: Math.sin(aim), z: Math.cos(aim) }));
+    const expected = Math.atan2(Math.sin(aim), Math.cos(aim));
+    assert.ok(Math.abs(body.facing - expected) < 1e-8);
+    s.step(s.command({ kind: "draw", drawn: false }));
+    s.advance(32);
+    assert.ok(Math.abs(body.facing - expected) < 1e-8);
+    s.step(s.command({ kind: "draw", drawn: true }));
+    s.advance(32);
+    assert.ok(Math.abs(body.facing - expected) < 1e-8);
+    s.step(s.command({ kind: "emote", emote: "wave" }));
+    s.advance(45);
+    assert.ok(Math.abs(body.facing - expected) < 1e-8);
+  }
+});

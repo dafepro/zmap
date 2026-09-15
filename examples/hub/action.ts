@@ -398,7 +398,7 @@ async function start() {
     "click",
     () => {
       cancel();
-      movement!.moveTo({ x: 6, y: 0, z: -7.22 });
+      movement!.moveTo({ x: 6, y: 0, z: -7.22 }, { avoidToys: true });
       feedback(
         "Follow the painted arrows. Push or kick the gold ball into the teal rear intake.",
       );

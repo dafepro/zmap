@@ -2,23 +2,23 @@
   "provenance": "Two actual Chrome peers, 75ms ±15ms each direction, every50th snapshot dropped; actual rendered transforms sampled at animation frames",
   "cadence": [
     {
-      "frames": 56,
-      "movingFraction": 1,
-      "maximumStep": 0.03696000000000038,
-      "minimumForwardStep": 0.03651999999999918
-    },
-    {
       "frames": 55,
       "movingFraction": 1,
-      "maximumStep": 0.04250471951820344,
-      "minimumForwardStep": 0.023422910592874973
+      "maximumStep": 0.03696000000000054,
+      "minimumForwardStep": 0.03651999999999949
+    },
+    {
+      "frames": 56,
+      "movingFraction": 1,
+      "maximumStep": 0.04922534612138356,
+      "minimumForwardStep": 0.023274973314572074
     }
   ],
   "initial": {
-    "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
-    "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
+    "session": "62e8bc86-601e-48ea-a295-2b51c7703c22",
+    "host": "356090da-ad27-4a57-8fdd-f8b8f0b89f3a",
     "epoch": 1,
-    "tick": 2,
+    "tick": 4,
     "local": {
       "x": -2,
       "y": 0,
@@ -30,7 +30,7 @@
       "gesture": 0
     },
     "players": {
-      "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
+      "356090da-ad27-4a57-8fdd-f8b8f0b89f3a": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -40,7 +40,7 @@
         "facing": 0,
         "gesture": 0
       },
-      "4998b58e-9148-4fa8-bc95-4afa72be208e": {
+      "62e8bc86-601e-48ea-a295-2b51c7703c22": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -54,8 +54,8 @@
   },
   "settled": [
     {
-      "session": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
-      "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
+      "session": "356090da-ad27-4a57-8fdd-f8b8f0b89f3a",
+      "host": "356090da-ad27-4a57-8fdd-f8b8f0b89f3a",
       "epoch": 1,
       "tick": 100,
       "local": {
@@ -69,7 +69,7 @@
         "gesture": 0
       },
       "players": {
-        "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
+        "356090da-ad27-4a57-8fdd-f8b8f0b89f3a": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -79,7 +79,7 @@
           "facing": 0,
           "gesture": 0
         },
-        "4998b58e-9148-4fa8-bc95-4afa72be208e": {
+        "62e8bc86-601e-48ea-a295-2b51c7703c22": {
           "x": 0.38530687520261925,
           "y": 0,
           "z": -5.3853068752026285,
@@ -92,10 +92,10 @@
       }
     },
     {
-      "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
-      "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
+      "session": "62e8bc86-601e-48ea-a295-2b51c7703c22",
+      "host": "356090da-ad27-4a57-8fdd-f8b8f0b89f3a",
       "epoch": 1,
-      "tick": 94,
+      "tick": 96,
       "local": {
         "x": 0.38530687520261925,
         "y": 0,
@@ -107,7 +107,7 @@
         "gesture": 0
       },
       "players": {
-        "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
+        "356090da-ad27-4a57-8fdd-f8b8f0b89f3a": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -117,7 +117,7 @@
           "facing": 0,
           "gesture": 0
         },
-        "4998b58e-9148-4fa8-bc95-4afa72be208e": {
+        "62e8bc86-601e-48ea-a295-2b51c7703c22": {
           "x": 0.38530687520261925,
           "y": 0,
           "z": -5.3853068752026285,
@@ -131,14 +131,14 @@
     }
   ],
   "final": {
-    "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
-    "host": "4998b58e-9148-4fa8-bc95-4afa72be208e",
+    "session": "62e8bc86-601e-48ea-a295-2b51c7703c22",
+    "host": "62e8bc86-601e-48ea-a295-2b51c7703c22",
     "epoch": 2,
     "tick": 226,
     "local": {
-      "x": -1.2221825406947988,
+      "x": -1.1703280434077854,
       "y": 0,
-      "z": -3.777817459305201,
+      "z": -3.8296719565922146,
       "vx": 0,
       "vy": 0,
       "vz": 0,
@@ -146,10 +146,10 @@
       "gesture": 0
     },
     "players": {
-      "4998b58e-9148-4fa8-bc95-4afa72be208e": {
-        "x": -1.2221825406947988,
+      "62e8bc86-601e-48ea-a295-2b51c7703c22": {
+        "x": -1.1703280434077854,
         "y": 0,
-        "z": -3.777817459305201,
+        "z": -3.8296719565922146,
         "vx": 0,
         "vy": 0,
         "vz": 0,

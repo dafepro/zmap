@@ -70,7 +70,9 @@ test("a kicked existing ball completes one shared cannon fuse across late join a
     // Preloaded Jo really leaves and rejoins during the accepted fuse.
     await c.evaluate(() => (window as any).zoomapActionYard.world.leave());
     await expect(a.locator("#people")).toHaveText("2 PLAYERS");
-    await walk(b, 7.8, -5.2);
+    // Observe from the front side; routing behind the now-solid cannon would
+    // deliberately walk Sam through the waiting intake ball.
+    await walk(b, 7.8, -2);
     await a.locator("#visit-cannon").click();
     await expect
       .poll(
@@ -107,7 +109,20 @@ test("a kicked existing ball completes one shared cannon fuse across late join a
           (await events(b)).find((event: any) => event.kind === "fuse"),
         { intervals: [20, 20, 30] },
       )
-      .toBeTruthy();
+      .toBeTruthy()
+      .catch(async (error) => {
+        const state = await a.evaluate(() => {
+          const w = (window as any).zoomapActionYard.world;
+          return {
+            local: w.local,
+            toys: w.state.toys,
+            objects: w.state.objects,
+          };
+        });
+        throw new Error(
+          `${error.message}\nCannon capture state: ${JSON.stringify(state)}`,
+        );
+      });
     const fused = (await events(b)).find((event: any) => event.kind === "fuse");
     expect(fused.data.toy).toBe("cannon-ball");
     await c.evaluate(async (url) => {

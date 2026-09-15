@@ -75,3 +75,15 @@ Limits are five active objects, eight toy collider boxes per object, 2 KiB confi
 `tests/cannon.test.ts` checks the source timing, same-ball reuse, rotation, cooldown, exclusive chamber, kinematic ball contacts, front-stop masks, exact sphere/swept intake, height, wall clearance, cancellation, malformed content/state, generic custom behavior, teleport presentation and deterministic checkpoint replay. `tests/cannon-server.test.ts` uses real sockets to check late join, host loss halfway through a fuse, one accepted launch, cooldown continuity, capability rejection, state injection, event rollback and stale authority.
 
 The deterministic Node capacity exercise runs five cannons, five balls and twenty actors for 120 simulated seconds with repeated loading. Its diagnostics report the actual fixed-step p95 and maximum checkpoint bytes on the test machine. This is simulation evidence, not browser frame time, impaired-network throughput or physical-phone performance.
+
+### Player collision volumes
+
+`WorldObject.playerColliders` optionally supplies up to eight local oriented
+boxes using the same `{ center, size }` schema as `toyColliders`. Player movement,
+client prediction, and path planning use these volumes with the instance's
+rotation and player radius/height. Ball collision remains separately authored,
+so a cannon can stop a player while leaving its intake and bore open to balls.
+The cannon now has a player hull, wheel boxes matching the Blender dimensions,
+and its existing front ball stop. The courtyard's cannon approach requests
+`movement.moveTo(point, { avoidToys: true })` to preserve the waiting ball; normal
+click movement retains deliberate ball pushing.

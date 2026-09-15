@@ -24,6 +24,7 @@ import {
   type ObjectBehavior,
 } from "../src/world-objects";
 import { advanceToys } from "../src/toy-physics";
+import { findWalkPath, canWalkSegment } from "../src/navigation";
 
 const behaviors = [cannonBehavior];
 function fixture(rotation = 0) {
@@ -149,7 +150,7 @@ test("one chamber owns one fuse and captured balls still repel other moving ball
   assert.equal(state.toys.ball.z, -1.5);
   assert.equal(state.toys.ball.vz, 0);
 });
-test("front stop blocks balls at any rotation while avatar movement ignores it", () => {
+test("cannon blocks approaching balls and players at arbitrary rotation", () => {
   for (const rotation of [0, Math.PI / 2, -Math.PI / 4]) {
     const { map, state, advance, cannon } = fixture(rotation),
       object = map.objects![0];
@@ -173,10 +174,7 @@ test("front stop blocks balls at any rotation while avatar movement ignores it",
         { ...idleInput(), x: -Math.sin(rotation), z: -Math.cos(rotation) },
         1 / 30,
       );
-    assert.ok(
-      Math.hypot(player.x - object.position.x, player.z - object.position.z) <
-        0.6,
-    );
+    assert.ok(objectLocalPoint(object, player).z > 1.3);
   }
 });
 test("real displacement cancels continuous dwell and an obstructed muzzle produces no teleport", () => {
@@ -594,4 +592,23 @@ test("five cannons and twenty actors sustain repeated accepted timelines inside 
       events: state.objects!.eventSequence,
     }),
   );
+});
+
+test("player collision boxes also route around the rotated cannon and reject invalid content", () => {
+  for (const rotation of [0, Math.PI / 2, Math.PI / 4]) {
+    const { map } = fixture(rotation),
+      object = map.objects![0];
+    const from = objectPoint(object, { x: -3, y: 0, z: 0 }),
+      to = objectPoint(object, { x: 3, y: 0, z: 0 });
+    assert.equal(canWalkSegment(map, from, to), false);
+    const path = findWalkPath(map, from, to);
+    assert.equal(path.status, "ready");
+    if (path.status === "ready") {
+      assert.ok(path.points.length > 2);
+      for (let i = 1; i < path.points.length; i++)
+        assert.ok(canWalkSegment(map, path.points[i - 1], path.points[i]));
+    }
+    object.playerColliders![0].size.x = -1;
+    assert.throws(() => validateMap(map, behaviors), /colliders/);
+  }
 });

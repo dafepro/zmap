@@ -1,12 +1,12 @@
 {
-  "date": "2026-09-15T20:22:00.188Z",
+  "date": "2026-09-15T20:58:32.161Z",
   "platform": "darwin",
   "release": "25.6.0",
   "arch": "arm64",
   "browser": "152.0.7977.84",
   "viewport": "1440×1050",
   "method": "One headless desktop run against Vite development server, six seconds after ready, one avatar with Blender model kit. Join timing begins after asset loading. Not cold-entry, full-room or physical-phone qualification.",
-  "joinMs": 94.70000004768372,
+  "joinMs": 96.29999995231628,
   "render": {
     "frameP95Ms": 16.700000000000728,
     "drawCalls": 101,
@@ -16,7 +16,7 @@
   },
   "traffic": {
     "incoming": 56735,
-    "outgoing": 47503
+    "outgoing": 47539
   },
   "players": 1,
   "epoch": 1

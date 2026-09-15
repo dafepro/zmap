@@ -120,7 +120,13 @@ export function createNavigationControls(
         actionMovementLocked(world.state.actions?.players[world.session]))
     );
   };
-  const plan = (destination: Vec3, retry = false): boolean => {
+  let avoidRouteToys = false;
+  const plan = (
+    destination: Vec3,
+    retry = false,
+    avoidToys = false,
+  ): boolean => {
+    if (!retry) avoidRouteToys = avoidToys;
     if (dead) return false;
     if (!world.local || world.status !== "ready") {
       stop("Waiting for the field…");
@@ -136,7 +142,27 @@ export function createNavigationControls(
       status("Landing first · your next destination is queued");
       return true;
     }
-    const result = findWalkPath(map, world.local, destination, {
+    const routingMap = avoidRouteToys
+      ? {
+          ...map,
+          blockers: [
+            ...map.blockers,
+            ...map.toys.map((toy) => {
+              const body = world.state.toys[toy.id];
+              const radius = toy.radius + 0.15;
+              return {
+                x: body.x - radius,
+                z: body.z - radius,
+                width: radius * 2,
+                depth: radius * 2,
+                y: body.y,
+                height: toy.radius * 2,
+              };
+            }),
+          ],
+        }
+      : map;
+    const result = findWalkPath(routingMap, world.local, destination, {
       items: world.durable.items,
       catalog: world.options.catalog,
     });
@@ -419,7 +445,8 @@ export function createNavigationControls(
   return {
     setMode,
     stop,
-    moveTo: (point: Vec3) => plan(point),
+    moveTo: (point: Vec3, options?: { avoidToys?: boolean }) =>
+      plan(point, false, !!options?.avoidToys),
     state: () => ({
       mode,
       target: target ? { ...target } : null,
