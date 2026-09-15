@@ -13,21 +13,60 @@ import {
 } from "../../avatar-studio/src/index";
 
 /** Inspection-only source mesh. The runtime package never loads this mannequin. */
-const sourceURL = new URL(
-  "../../avatar-studio/assets/source/locomotion/quaternius-ual1-locomotion.glb",
+const sourceURLs = [
+  new URL(
+    "../../avatar-studio/assets/source/locomotion/kaykit/Rig_Medium_MovementBasic.glb",
+    import.meta.url,
+  ).href,
+  new URL(
+    "../../avatar-studio/assets/source/locomotion/kaykit/Rig_Medium_MovementAdvanced.glb",
+    import.meta.url,
+  ).href,
+];
+const sourceSamplesURL = new URL(
+  "../../avatar-studio/assets/source/locomotion/kaykit/source-samples.json",
   import.meta.url,
 ).href;
 const paces = [
-  { name: "Walk", clip: "Walk_Loop", speed: 1.2 },
-  { name: "Brisk walk", clip: "Walk_Loop", speed: 2.2 },
-  { name: "Jog", clip: "Jog_Fwd_Loop", speed: 4 },
-  { name: "Sprint", clip: "Sprint_Loop", speed: 5.4 },
+  { name: "Walk", clips: ["Walking_A", "Walking_B"], speed: 1.2, x: 0, z: 1 },
+  {
+    name: "Brisk walk",
+    clips: ["Walking_A", "Walking_B"],
+    speed: 2.2,
+    x: 0,
+    z: 1,
+  },
+  { name: "Jog", clips: ["Running_A"], speed: 4, x: 0, z: 1 },
+  { name: "Sprint", clips: ["Running_A"], speed: 5.4, x: 0, z: 1 },
+  {
+    name: "Backward walk",
+    clips: ["Walking_Backwards"],
+    speed: 2.2,
+    x: 0,
+    z: -1,
+  },
+  {
+    name: "Strafe left",
+    clips: ["Running_Strafe_Left"],
+    speed: 4,
+    x: -1,
+    z: 0,
+  },
+  {
+    name: "Strafe right",
+    clips: ["Running_Strafe_Right"],
+    speed: 4,
+    x: 1,
+    z: 0,
+  },
+  { name: "Backward sprint", clips: ["Running_A"], speed: 5.4, x: 0, z: -1 },
 ] as const;
 
 type LocomotionDiagnostic = {
   clip: string;
   phase: number;
   playbackRate?: number;
+  reversed?: boolean;
 };
 type Drive = { x: number; z: number; heading: number; label: string };
 function driveAt(time: number): Drive {
@@ -46,20 +85,38 @@ function driveAt(time: number): Drive {
     };
   if (time < 9)
     return { x: 0, z: 0, heading: Math.PI / 2, label: "Stop and settle" };
-  if (time < 10.5)
-    return { x: 0, z: -2, heading: 0, label: "Backward · adapted source" };
-  if (time < 12)
-    return { x: 2, z: 0, heading: 0, label: "Strafe · adapted source" };
-  return { x: 0, z: 5.4, heading: 0, label: "Sprint return" };
+  if (time < 10.4)
+    return { x: 0, z: -2.2, heading: 0, label: "Backward walk · authored" };
+  if (time < 11.3)
+    return {
+      x: -4,
+      z: 0,
+      heading: 0,
+      label: "Left strafe · authored crossover",
+    };
+  if (time < 12.2)
+    return {
+      x: 4,
+      z: 0,
+      heading: 0,
+      label: "Right strafe · authored crossover",
+    };
+  return {
+    x: 0,
+    z: -5.4,
+    heading: 0,
+    label: "Backward sprint · reversed Running_A",
+  };
 }
 
 export async function createLocomotionReview() {
-  const [catalog, equipment, source] = await Promise.all([
+  const [catalog, equipment, sources, sourceSamples] = await Promise.all([
     fetch("/avatars/catalog.json").then((r) => r.json() as Promise<Catalog>),
     fetch("/avatars/action/catalog.json").then(
       (r) => r.json() as Promise<WieldCatalog>,
     ),
-    new GLTFLoader().loadAsync(sourceURL),
+    Promise.all(sourceURLs.map((url) => new GLTFLoader().loadAsync(url))),
+    fetch(sourceSamplesURL).then((response) => response.json()),
   ]);
   const library = new AvatarLibrary(
     catalog,
@@ -88,17 +145,90 @@ export async function createLocomotionReview() {
       onError: (error) => errors.push(String(error)),
     },
   );
+  const source = sources[0];
+  // Both packs contain the same named Rig_Medium. Keep the original Basic mesh
+  // and play Advanced tracks by those original node names; no source retargeting.
+  const clips = new Map(
+    sources.flatMap((pack) =>
+      pack.animations.map((clip) => [clip.name, clip] as const),
+    ),
+  );
   const sourceRoot = source.scene;
   const mixer = new THREE.AnimationMixer(sourceRoot);
   const sourceActions = new Map(
-    source.animations.map((clip) => [clip.name, mixer.clipAction(clip)]),
+    [...clips.values()].map((clip) => [clip.name, mixer.clipAction(clip)]),
   );
   const sourceDurations = new Map(
-    source.animations.map((clip) => [clip.name, clip.duration]),
+    [...clips.values()].map((clip) => [clip.name, clip.duration]),
   );
+  // Independent loader/mixer qualification: verify that Advanced clips actually
+  // animate the Basic mannequin at original keys, including physical wrists.
+  // Matching only action.time would pass even with missing node bindings.
+  const sourceNodes = new Map<string, THREE.Object3D>();
+  for (const [object, association] of source.parser.associations) {
+    if (object instanceof THREE.Object3D && association.nodes !== undefined)
+      sourceNodes.set(source.parser.json.nodes[association.nodes].name, object);
+  }
+  const sourceVerification = {
+    samples: 0,
+    maxPositionError: 0,
+    maxRotationErrorRadians: 0,
+  };
+  for (const name of [
+    "Walking_A",
+    "Walking_B",
+    "Running_A",
+    "Walking_Backwards",
+    "Running_Strafe_Left",
+    "Running_Strafe_Right",
+  ]) {
+    mixer.stopAllAction();
+    const action = sourceActions.get(name)!.reset().play();
+    for (const sample of sourceSamples.clips[name].samples.slice(0, -1)) {
+      action.time = sample.time;
+      mixer.update(0);
+      sourceRoot.updateMatrixWorld(true);
+      sourceSamples.joints.forEach(
+        (joint: { sourceName: string }, index: number) => {
+          const node = sourceNodes.get(joint.sourceName)!;
+          if (!node) throw new Error(`Reference GLB lacks ${joint.sourceName}`);
+          const error = node
+            .getWorldPosition(new THREE.Vector3())
+            .distanceTo(
+              new THREE.Vector3().fromArray(sample.positions, index * 3),
+            );
+          const angle = node
+            .getWorldQuaternion(new THREE.Quaternion())
+            .normalize()
+            .angleTo(
+              new THREE.Quaternion()
+                .fromArray(sample.rotations, index * 4)
+                .normalize(),
+            );
+          sourceVerification.maxPositionError = Math.max(
+            sourceVerification.maxPositionError,
+            error,
+          );
+          sourceVerification.maxRotationErrorRadians = Math.max(
+            sourceVerification.maxRotationErrorRadians,
+            angle,
+          );
+        },
+      );
+      sourceVerification.samples++;
+    }
+  }
+  if (
+    sourceVerification.maxPositionError > 0.00001 ||
+    sourceVerification.maxRotationErrorRadians > 0.00001
+  )
+    throw new Error(
+      `Reference loader disagrees with original samples: ${JSON.stringify(sourceVerification)}`,
+    );
+  mixer.stopAllAction();
   // Presentation scale preserves source proportions and tracks. Reflect X to match
   // the target family's handedness, exactly as the documented retargeter does.
-  sourceActions.get("A_TPose")!.play();
+  sourceActions.get("T-Pose")!.play();
   mixer.setTime(0);
   sourceRoot.updateMatrixWorld(true);
   const sourceBounds = new THREE.Box3().setFromObject(sourceRoot);
@@ -159,7 +289,7 @@ export async function createLocomotionReview() {
         "The authored runtime must expose locomotion clip and phase for reference-matched review",
       );
     // Neutral target rest is an intentional authored bind pose, not a source clip.
-    const clip = locomotion.clip === "Rest" ? "Idle_Loop" : locomotion.clip;
+    const clip = locomotion.clip === "Rest" ? "T-Pose" : locomotion.clip;
     const action = sourceActions.get(clip);
     if (!action) throw new Error(`Missing original reference clip ${clip}`);
     if (selectedSource !== clip) {
@@ -167,6 +297,8 @@ export async function createLocomotionReview() {
       action.reset().play();
       selectedSource = clip;
     }
+    // Diagnostics phase is already the actual sampled source phase after phase
+    // alignment/reversal. Reversing it again here would falsify the comparison.
     action.time =
       locomotion.clip === "Rest"
         ? 0
@@ -254,9 +386,20 @@ export async function createLocomotionReview() {
     diagnostics,
     errors,
     sourceScale,
+    sourceVerification,
     tick,
     paint,
     gripError,
+    sourceReference() {
+      const motion = diagnostics().locomotion!;
+      return {
+        clip: selectedSource,
+        time: sourceActions.get(selectedSource)!.time,
+        duration: sourceDurations.get(selectedSource)!,
+        phase: motion.clip === "Rest" ? 0 : motion.phase,
+        reversed: motion.reversed ?? false,
+      };
+    },
     footwear() {
       const feet = { left: Infinity, right: Infinity };
       avatar.object.updateMatrixWorld(true);
@@ -325,15 +468,16 @@ export async function createLocomotionReview() {
       avatar.dispose();
       library.dispose();
       wieldLibrary.dispose();
-      sourceRoot.traverse((node) => {
-        if (node instanceof THREE.Mesh) {
-          node.geometry.dispose();
-          for (const material of Array.isArray(node.material)
-            ? node.material
-            : [node.material])
-            material.dispose();
-        }
-      });
+      for (const pack of sources)
+        pack.scene.traverse((node) => {
+          if (node instanceof THREE.Mesh) {
+            node.geometry.dispose();
+            for (const material of Array.isArray(node.material)
+              ? node.material
+              : [node.material])
+              material.dispose();
+          }
+        });
       floor.geometry.dispose();
       floor.material.dispose();
       grid.geometry.dispose();
@@ -364,7 +508,7 @@ export async function captureLocomotionReview() {
     ctx.fillText(title, 16, 30);
     ctx.font = "14px Arial";
     ctx.fillText(
-      "Each pair: Quaternius source, X mirrored (left) / actual Zoomap avatar (right). Same evaluated clip phase.",
+      "Each pair: KayKit source, X mirrored (left) / actual Zoomap avatar (right). Same evaluated source phase.",
       16,
       53,
     );
@@ -388,21 +532,27 @@ export async function captureLocomotionReview() {
       const target = sheet(
         `${pace.name} · ${pace.speed} m/s · original clip and retarget`,
         6,
+        8,
       );
       for (const [weightIndex, weight] of [-1, 0, 1].entries()) {
         await review.reset(weight);
-        const drive = { x: 0, z: pace.speed, heading: 0, label: pace.name };
+        const drive = {
+          x: pace.x * pace.speed,
+          z: pace.z * pace.speed,
+          heading: 0,
+          label: pace.name,
+        };
         for (let i = 0; i < 120; i++) review.tick(1 / 60, drive);
         const captured = new Set<number>();
-        for (let i = 0; i < 600 && captured.size < 4; i++) {
+        for (let i = 0; i < 600 && captured.size < 8; i++) {
           review.tick(1 / 120, drive);
           const d = review.diagnostics();
           const motion = d.locomotion!;
-          if (motion.clip !== pace.clip)
+          if (!(pace.clips as readonly string[]).includes(motion.clip))
             throw new Error(
-              `${pace.name} selected ${motion.clip} instead of ${pace.clip}`,
+              `${pace.name} selected ${motion.clip} instead of ${pace.clips.join("/")}`,
             );
-          const col = Math.floor(motion.phase * 4) % 4;
+          const col = Math.floor(motion.phase * 8) % 8;
           if (captured.has(col)) continue;
           captured.add(col);
           const label = `Weight ${weight > 0 ? "+" : ""}${weight} · phase ${motion.phase.toFixed(3)}`;
@@ -413,10 +563,11 @@ export async function captureLocomotionReview() {
             pace: pace.name,
             weight,
             footwear: review.footwear(),
+            sourceReference: review.sourceReference(),
             ...d,
           });
         }
-        if (captured.size !== 4)
+        if (captured.size !== 8)
           throw new Error(`Did not capture a full ${pace.name} cycle`);
       }
       images[pace.name.toLowerCase().replaceAll(" ", "-")] =
@@ -425,7 +576,7 @@ export async function captureLocomotionReview() {
     const transitions = sheet(
       "Transitions and two-hand attachment ownership",
       2,
-      7,
+      9,
     );
     for (const weight of [-1, 0, 1]) {
       await review.reset(weight);
@@ -440,13 +591,16 @@ export async function captureLocomotionReview() {
             weight,
             label: review.label,
             gripError: review.gripError(),
+            sourceReference: review.sourceReference(),
             ...review.diagnostics(),
           });
         if (
           weight === 0 &&
-          [90, 210, 330, 450, 510, 570, 660].includes(frame)
+          [90, 210, 330, 450, 510, 570, 650, 705, 795].includes(frame)
         ) {
-          const col = [90, 210, 330, 450, 510, 570, 660].indexOf(frame);
+          const col = [90, 210, 330, 450, 510, 570, 650, 705, 795].indexOf(
+            frame,
+          );
           cell(transitions, 0, col, review.label, false);
           cell(transitions, 1, col, review.label, true);
         }
@@ -459,6 +613,7 @@ export async function captureLocomotionReview() {
       records,
       errors: review.errors,
       sourceScale: review.sourceScale,
+      sourceVerification: review.sourceVerification,
     };
   } finally {
     review.dispose();
@@ -478,7 +633,7 @@ export async function mountLocomotionReview(
   title.style.fontSize = "24px";
   const caption = document.createElement("p");
   caption.textContent =
-    "Quaternius source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share phase; neutral rest is compared with source idle. Backward and strafe are adaptations.";
+    "KayKit source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share evaluated source phase; neutral rest is compared with source T-pose. Backward walk and strafes are authored. Backward sprint reverses Running_A. The source mannequin has different proportions and some native sole penetration.";
   const controls = document.createElement("div");
   controls.style.cssText =
     "display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap";
@@ -487,7 +642,7 @@ export async function mountLocomotionReview(
     "width:768px;max-width:100%;height:auto;border:1px solid #c1c8ba";
   let paused = false;
   let elapsed = 0;
-  let mode: "timeline" | "Walk" | "Brisk walk" | "Jog" | "Sprint" = "timeline";
+  let mode: "timeline" | (typeof paces)[number]["name"] = "timeline";
   let alive = true;
   let tool = false;
   let busy = false;
@@ -509,10 +664,7 @@ export async function mountLocomotionReview(
   });
   for (const nextMode of [
     "timeline",
-    "Walk",
-    "Brisk walk",
-    "Jog",
-    "Sprint",
+    ...paces.map((pace) => pace.name),
   ] as const)
     button(nextMode === "timeline" ? "Transitions" : nextMode, async () => {
       busy = true;
@@ -547,7 +699,12 @@ export async function mountLocomotionReview(
       review.tick(
         dt,
         pace
-          ? { x: 0, z: pace.speed, heading: 0, label: pace.name }
+          ? {
+              x: pace.x * pace.speed,
+              z: pace.z * pace.speed,
+              heading: 0,
+              label: pace.name,
+            }
           : driveAt(elapsed % 14),
       );
     }
@@ -610,7 +767,7 @@ export async function recordLocomotionReview(side = true, held = false) {
       ctx.fillRect(0, 576, 768, 54);
       ctx.fillStyle = "#203139";
       ctx.font = "bold 15px Arial";
-      ctx.fillText("Quaternius reference (X mirrored)", 12, 596);
+      ctx.fillText("KayKit reference (X mirrored)", 12, 596);
       ctx.fillText("Actual modular Zoomap avatar", 394, 596);
       ctx.font = "14px Arial";
       ctx.fillText(

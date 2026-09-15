@@ -1,12 +1,12 @@
 {
-  "date": "2026-09-15T15:29:05.244Z",
+  "date": "2026-09-15T16:50:33.522Z",
   "platform": "darwin",
   "release": "25.6.0",
   "arch": "arm64",
   "browser": "152.0.7977.84",
   "viewport": "1440×1050",
   "method": "One headless desktop run against Vite development server, six seconds after ready, one avatar with Blender model kit. Join timing begins after asset loading. Not cold-entry, full-room or physical-phone qualification.",
-  "joinMs": 92.60000002384186,
+  "joinMs": 95.20000004768372,
   "render": {
     "frameP95Ms": 16.700000000000728,
     "drawCalls": 101,

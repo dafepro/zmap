@@ -18,21 +18,55 @@ test("authored source and modular avatars render matched gait phases, transition
   );
   expect(errors).toEqual([]);
   expect(result.errors).toEqual([]);
+  expect(result.sourceVerification.samples).toBe(168);
+  expect(result.sourceVerification.maxPositionError).toBeLessThan(0.00001);
+  expect(result.sourceVerification.maxRotationErrorRadians).toBeLessThan(
+    0.00001,
+  );
   const steady = result.records.filter(
     (record: any) => record.kind === "steady",
   );
-  expect(steady).toHaveLength(48);
+  expect(steady).toHaveLength(192);
   expect(new Set(steady.map((record: any) => record.weight))).toEqual(
     new Set([-1, 0, 1]),
   );
-  expect(new Set(steady.map((record: any) => record.locomotion.clip))).toEqual(
-    new Set(["Walk_Loop", "Jog_Fwd_Loop", "Sprint_Loop"]),
-  );
+  const clips = new Set(steady.map((record: any) => record.locomotion.clip));
+  expect(clips.has("Walking_A") || clips.has("Walking_B")).toBe(true);
+  for (const clip of [
+    "Running_A",
+    "Walking_Backwards",
+    "Running_Strafe_Left",
+    "Running_Strafe_Right",
+  ])
+    expect(clips.has(clip)).toBe(true);
+  expect(
+    new Set(
+      steady
+        .filter((record: any) => record.pace === "Backward sprint")
+        .map((record: any) => record.locomotion.reversed),
+    ),
+  ).toEqual(new Set([true]));
+  for (const record of result.records) {
+    const reference = record.sourceReference;
+    expect(reference.clip).toBe(
+      record.locomotion.clip === "Rest" ? "T-Pose" : record.locomotion.clip,
+    );
+    expect(reference.time).toBeCloseTo(reference.phase * reference.duration, 6);
+    expect(reference.reversed).toBe(record.locomotion.reversed ?? false);
+  }
   for (const record of steady) {
     for (const height of Object.values(record.footwear) as number[]) {
       expect(Number.isFinite(height)).toBe(true);
       expect(height).toBeGreaterThanOrEqual(-0.0001);
     }
+    const support = Math.min(...(Object.values(record.footwear) as number[]));
+    // Walking retains ground support; running permits a modest flight phase.
+    // This catches the earlier source-proportion scaling that created 0.5m hops.
+    expect(support).toBeLessThanOrEqual(
+      ["Walk", "Brisk walk", "Backward walk"].includes(record.pace)
+        ? 0.003
+        : 0.12,
+    );
   }
   const transitions = result.records.filter(
     (record: any) => record.kind === "transition",
@@ -59,11 +93,12 @@ test("authored source and modular avatars render matched gait phases, transition
     "docs/evidence/locomotion/visual-review.json",
     JSON.stringify(
       {
-        source: "Quaternius Universal Animation Library Standard v3, CC0 1.0",
+        source: "KayKit Character Animations 1.1, Rig_Medium, CC0 1.0",
         capture:
           "Actual GLB meshes, actual AvatarInstance runtime at controlled 60/120 Hz, matched source clip phase",
-        note: "The source display is X-mirrored to match target handedness; source tracks are unchanged. Backward and strafe are adaptations; the imported archive has only authored forward locomotion.",
+        note: "The source display is X-mirrored to match target handedness; source tracks are unchanged. Backward walking and lateral running use authored clips. Backward sprint reverses Running_A and is labeled derived. Source mannequin proportions and native sole penetration are not target requirements. Neutral target rest is compared with the source T-pose.",
         sourceScale: result.sourceScale,
+        sourceVerification: result.sourceVerification,
         records: result.records,
       },
       null,

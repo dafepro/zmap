@@ -1,4 +1,6 @@
-# Locomotion reference audit
+# Initial locomotion reference audit (historical)
+
+The active source is now KayKit 1.1; see [directional review](directional-locomotion-review.md) and [current source provenance](../avatar-studio/assets/source/locomotion/kaykit/README.md). This audit records the previous increment and does not describe current directional retargeting.
 
 Inspected September 15, 2026. The request was to replace the conspicuous procedural gait with actual animation reference, then add sprinting. This audit distinguishes the author's animation files from Zoomap's later retargeting and speed adaptation.
 
