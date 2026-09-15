@@ -1,24 +1,24 @@
 {
   "provenance": "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
-  "recoveryMs": 134,
+  "recoveryMs": 132,
   "pass": [
     {
       "kind": "reel",
-      "session": "3db7a4be-2511-42c6-ac5c-28be631f414d"
+      "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798"
     },
     {
       "kind": "pitch",
-      "session": "3db7a4be-2511-42c6-ac5c-28be631f414d"
+      "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798"
     },
     {
       "kind": "rebound",
-      "session": "e18ca083-f691-4a3a-84fe-d5497725b92c"
+      "session": "b61c3ad0-8974-401e-ab3c-d077c67e018e"
     }
   ],
   "pulse": {
     "id": 5,
-    "tick": 289,
-    "session": "3db7a4be-2511-42c6-ac5c-28be631f414d",
+    "tick": 292,
+    "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798",
     "tool": "wake-driver",
     "kind": "pulse",
     "position": {
@@ -27,21 +27,21 @@
       "z": -2.4
     }
   },
-  "bytes": 1473,
+  "bytes": 1688,
   "state": {
-    "tick": 330,
+    "tick": 335,
     "players": {
-      "e18ca083-f691-4a3a-84fe-d5497725b92c": {
-        "x": -1.9985105053735266,
+      "b61c3ad0-8974-401e-ab3c-d077c67e018e": {
+        "x": -1.9946200262284892,
         "y": 0,
-        "z": -0.2934549694181892,
-        "vx": 0.000003046836268276121,
+        "z": -0.20413453994821865,
+        "vx": 0.000007564658583826981,
         "vy": 0,
-        "vz": 0.004309043944071424,
-        "facing": -3.1281467219159187,
+        "vz": 0.003087556409525979,
+        "facing": -3.1193940362828942,
         "gesture": 0
       },
-      "7abc2524-4478-41e4-83f3-d64009080115": {
+      "61fc5da2-43eb-4e78-b81e-4e8481fad0b3": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -53,20 +53,30 @@
       }
     },
     "toys": {
+      "cannon-ball": {
+        "x": 6,
+        "y": 0,
+        "z": -6.35,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      },
       "ball": {
         "x": -2,
-        "y": 0.0031575039999995266,
-        "z": 11.65765675163411,
+        "y": 0.038437263360000126,
+        "z": 12.286590712334451,
         "vx": 0,
-        "vy": -1.603084800000003,
-        "vz": 8.489992544824762,
+        "vy": 0.1606210560000022,
+        "vz": 8.495421883962555,
         "facing": 0,
         "gesture": 0
       },
       "blue-ball": {
         "x": 4.5,
         "y": 0,
-        "z": 1.5,
+        "z": 1.5000000000000004,
         "vx": 0,
         "vy": 0,
         "vz": 0,
@@ -76,7 +86,7 @@
       "practice-ball": {
         "x": -7,
         "y": 0,
-        "z": 3,
+        "z": 3.0000000000000004,
         "vx": 0,
         "vy": 0,
         "vz": 0,
@@ -90,7 +100,7 @@
       "appliedSequence": 20,
       "eventSequence": 5,
       "players": {
-        "e18ca083-f691-4a3a-84fe-d5497725b92c": {
+        "b61c3ad0-8974-401e-ab3c-d077c67e018e": {
           "tool": "rebound-panel",
           "phase": "idle",
           "held": false,
@@ -105,18 +115,18 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
-          "phaseStarted": 208,
-          "phaseUntil": 208,
-          "lastHeldTick": 207,
+          "phaseStarted": 215,
+          "phaseUntil": 215,
+          "lastHeldTick": 213,
           "target": null,
           "sequence": 9,
           "impulse": {
-            "x": 0.000003046836268276121,
-            "z": 0.004309043944071424
+            "x": 0.000007564658583826981,
+            "z": 0.003087556409525979
           },
-          "immuneUntil": 319
+          "immuneUntil": 322
         },
-        "7abc2524-4478-41e4-83f3-d64009080115": {
+        "61fc5da2-43eb-4e78-b81e-4e8481fad0b3": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -144,20 +154,30 @@
         }
       },
       "events": []
+    },
+    "objects": {
+      "version": 1,
+      "eventSequence": 0,
+      "instances": {
+        "courtyard-cannon": {
+          "balls": {}
+        }
+      },
+      "events": []
     }
   },
   "field": {
     "characters": 2,
     "readiness": [
       {
-        "session": "e18ca083-f691-4a3a-84fe-d5497725b92c",
+        "session": "b61c3ad0-8974-401e-ab3c-d077c67e018e",
         "desired": "rebound-panel",
         "ready": true,
         "pending": false,
         "error": null
       },
       {
-        "session": "7abc2524-4478-41e4-83f3-d64009080115",
+        "session": "61fc5da2-43eb-4e78-b81e-4e8481fad0b3",
         "desired": null,
         "ready": true,
         "pending": false,
@@ -191,7 +211,7 @@
     ]
   },
   "traffic": {
-    "incoming": 281434,
-    "outgoing": 41065
+    "incoming": 320036,
+    "outgoing": 40010
   }
 }

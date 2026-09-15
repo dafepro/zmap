@@ -32,7 +32,7 @@ Trigger cooldown and toy velocity are transient. A late join receives current va
 
 Visible ball rolling uses displacement/radius and a quaternion, independent of render frame rate. This is a lightweight sphere controller: spin is visual, airborne rotation does not model angular momentum, and rotation is not part of the contact solver. Sphere-to-sphere contacts use simultaneous bounded substeps, true 3D centres, mass and restitution, with stable grounded stacks. See [physics contracts and tests](physics.md).
 
-This first extension surface is declarative impulse/cooldown behavior. General custom behavior plugins and durable finite-state toys remain work, rather than accepting peer-provided executable scripts.
+For more involved passive objects, `map.objects` supplies versioned data and the app installs trusted `ObjectBehavior` implementations on its client and service. The cannon demonstrates timed capture, controlled loading, launch, collision masks and shared events. See [authored world objects](world-objects.md). Executable code never arrives from a peer; durable finite-state toys remain separate future work.
 
 ## Characters and visual adapters
 

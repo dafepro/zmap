@@ -260,6 +260,64 @@ h2 {
   display: grid;
   gap: 10px;
 }
+.cannon-card {
+  margin-bottom: 25px;
+  padding: 18px;
+  border: 1px solid #82aaa0;
+  border-radius: 13px;
+  background: #e3eee2;
+}
+.cannon-card .eyebrow {
+  color: #477d70;
+  margin-bottom: 10px;
+}
+.cannon-card h2 {
+  font-size: 20px;
+  margin: 0 0 9px;
+}
+.cannon-card p:not(.eyebrow),
+.cannon-card small {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #597569;
+}
+.cannon-card small {
+  display: block;
+  font-size: 10px;
+  margin-top: 12px;
+}
+.cannon-timeline {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 9px;
+  color: #65847a;
+  margin: 15px 0;
+}
+#cannon-status {
+  display: block;
+  font-size: 11px;
+  color: #356c60;
+  min-height: 17px;
+}
+.cannon-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.cannon-buttons button {
+  background: #356c60;
+  color: #fff6d6;
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 12px;
+  font-size: 11px;
+}
+.cannon-buttons #kick-ball {
+  background: #e4c372;
+  color: #524829;
+}
 .tool-card {
   display: flex;
   text-align: left;

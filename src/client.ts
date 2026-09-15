@@ -31,6 +31,7 @@ import {
   type Placement,
 } from "./core.js";
 import { WorldView, screenToWorld, type VisualOptions } from "./view.js";
+import type { ObjectBehaviors } from "./world-objects.js";
 export type ConnectionState =
   | "idle"
   | "connecting"
@@ -46,6 +47,7 @@ export type ClientOptions = {
   map: WorldMap;
   catalog: ItemType[];
   visuals?: VisualOptions;
+  objectBehaviors?: ObjectBehaviors;
   onStatus?: (status: ConnectionState, detail?: string) => void;
   onChange?: () => void;
   onActionRejected?: (reason: string) => void;
@@ -125,9 +127,9 @@ export class Zoomap {
     }
   >();
   constructor(readonly options: ClientOptions) {
-    validateMap(options.map);
+    validateMap(options.map, options.objectBehaviors);
     validateCatalog(options.catalog);
-    this.state = initialSimulation(options.map);
+    this.state = initialSimulation(options.map, options.objectBehaviors);
     this.durable = {
       version: 1,
       mapId: options.map.id,
@@ -264,6 +266,7 @@ export class Zoomap {
           capabilities: [
             "input-ack-v1",
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
+            ...(this.options.map.objects ? ["world-objects-v1"] : []),
           ],
           room: this.address!.room,
           credential,
@@ -281,12 +284,14 @@ export class Zoomap {
         if (m.type === "welcome") {
           if (
             !Array.isArray(m.capabilities) ||
-            !m.capabilities.includes("input-ack-v1")
+            !m.capabilities.includes("input-ack-v1") ||
+            (this.options.map.objects &&
+              !m.capabilities.includes("world-objects-v1"))
           ) {
             this.stopped = true;
             this.setStatus(
               "failed",
-              "Room service needs the input-ack-v1 protocol update",
+              "Room service needs the required input/world-object protocol update",
             );
             ws.close(4400, "Input acknowledgement protocol required");
             return;
@@ -664,6 +669,7 @@ export class Zoomap {
             this.durable.items,
             this.options.catalog,
             this.actionCommands,
+            this.options.objectBehaviors,
           );
           this.actionCommands = this.actionCommands.filter(
             (command) =>

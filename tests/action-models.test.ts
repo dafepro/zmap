@@ -7,6 +7,7 @@ import { initialSimulation, bodyAt } from "../src/core";
 import { syncActionPlayers } from "../src/world-actions";
 import { disposeObject } from "../src/view";
 import { actionYard } from "../examples/action-content";
+import { cannonBehavior } from "../src/cannon";
 import { loadActionKit } from "../examples/action-models";
 import "../avatar-studio/tests/helpers/node-image";
 const base = new URL("https://assets.test/avatars/");
@@ -43,7 +44,7 @@ test("action visual adapter keeps cable/pulse effects in world space and dispose
         name: "Test",
         appearance: "burgundy",
       }),
-      state = initialSimulation(actionYard),
+      state = initialSimulation(actionYard, [cannonBehavior]),
       body = bodyAt({ x: 4, y: 1, z: -2 });
     scene.add(character.object);
     state.players.test = body;
@@ -147,7 +148,7 @@ test("visual readiness rejects a failed accepted tool, explicit retry preserves 
         name: "Test",
         appearance: "burgundy",
       }),
-      state = initialSimulation(actionYard),
+      state = initialSimulation(actionYard, [cannonBehavior]),
       body = bodyAt({ x: 0, y: 0, z: 0 });
     state.players.test = body;
     syncActionPlayers(state);

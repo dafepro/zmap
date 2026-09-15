@@ -14,6 +14,15 @@ The builder starts from a disposable factory scene and writes only this kit’s 
 
 The project has not selected a distribution license; the package remains private. This file does not assign a license on the owner's behalf.
 
+The ball cannon extends this original kit with an imagegen concept and an
+interactive Blender reconstruction. Its teal/gold direction and behavior are
+based on the owner's Canvas item, audited at pinned repository revisions; the
+original SVG is not bundled. The packed reference, editable scene, reproducible
+builder, GLB and actual rendered reviews are retained. See the
+[cannon workflow](cannon-workflow.md) and [source audit](cannon-source-audit.md).
+The final cannon GLB is 721,264 bytes with 14,000 source triangles. Its physical
+socket and full-bore clearance tests load that exact export.
+
 Installed direct dependencies inspected 2026-09-06:
 
 | Dependency      | Version | License    | Purpose                    |

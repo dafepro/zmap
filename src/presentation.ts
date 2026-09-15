@@ -13,6 +13,8 @@ export function rollingMotion(previous: Vec3, next: Vec3, radius: number) {
   };
 }
 export function interpolateBody(a: Body, b: Body, alpha: number): Body {
+  if ((a.teleportEpoch ?? 0) !== (b.teleportEpoch ?? 0))
+    return { ...(alpha >= 1 ? b : a) };
   if (Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) > 3) return { ...b };
   const mix = (x: number, y: number) => x + (y - x) * alpha;
   const angle = Math.atan2(
@@ -28,6 +30,9 @@ export function interpolateBody(a: Body, b: Body, alpha: number): Body {
     vz: mix(a.vz, b.vz),
     facing: a.facing + angle * alpha,
     gesture: mix(a.gesture, b.gesture),
+    ...(b.teleportEpoch === undefined
+      ? {}
+      : { teleportEpoch: b.teleportEpoch }),
   };
 }
 export function interpolateSimulation(
@@ -35,6 +40,7 @@ export function interpolateSimulation(
   b: Simulation,
   alpha: number,
 ): Simulation {
+  if (alpha >= 1) return structuredClone(b);
   const bodies = (left: Record<string, Body>, right: Record<string, Body>) =>
     Object.fromEntries(
       Object.entries(right).map(([id, body]) => [
@@ -48,6 +54,7 @@ export function interpolateSimulation(
     toys: bodies(a.toys, b.toys),
     triggers: { ...a.triggers },
     ...(a.actions ? { actions: structuredClone(a.actions) } : {}),
+    ...(a.objects ? { objects: structuredClone(a.objects) } : {}),
   };
 }
 /** Bounded display-only interpolation. Never feed delayed poses back into simulation or durable writes. */

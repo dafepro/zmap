@@ -15,7 +15,7 @@ Browser-hosted simulation is intentionally untrusted for valuable outcomes. A mo
 
 ## Browser lifecycle
 
-Import `Zoomap` from `zmap`. Construct it with `{ container, map, catalog, visuals?, onStatus?, onChange? }`. The element must have a nonzero size. Construction creates WebGL2 resources and can throw; catch this at the consuming route boundary. No world code needs to load on unrelated app routes.
+Import `Zoomap` from `zmap`. Construct it with `{ container, map, catalog, objectBehaviors?, visuals?, onStatus?, onChange? }`. The element must have a nonzero size. Construction creates WebGL2 resources and can throw; catch this at the consuming route boundary. No world code needs to load on unrelated app routes.
 
 `await world.enter({ url, room, credential })` obtains a fresh credential, opens a room and resolves only when the local character has valid shared state and its first frame is drawn. Entry rejects on denied/full/failed status or a ten-second timeout. The credential callback is called again on reconnect. It must return a short-lived app-issued credential in a real integration; the sample uses explicit fixture tokens.
 
@@ -28,6 +28,8 @@ Movement keys are captured only on the world canvas. `setInput(x, y)` takes scre
 Maps can opt into `actionCatalog: playfulActionCatalog()` for the three implemented field actions. `equipTool(id | null)`, `setToolAim(x,z)`, `useTool(pressed)` and `cancelTool()` send ordered, bounded intents; `onActionRejected` reports rejection. See [shared field actions](field-tools.md) for capability negotiation, host replay and cooldown rules. Optional `Character.update(body,time,context)` context supplies session, display state, reduced-motion preference and viewport; `Character.dispose()` releases owned controllers and graphics on removal.
 
 Read `roster`, `local`, `state`, `durable`, `session`, `host`, `epoch`, `traffic`, and `joinMs` for presentation/diagnostics. Treat snapshots as read-only in consuming code. `onChange` reports room, durable edit and result changes; it is deliberately not a render-frequency callback.
+
+For passive shared props, declare `map.objects` and install the same versioned `objectBehaviors` on both client and room service. The included `cannonBehavior` / `cannonObject(...)` recycles existing app-approved balls. `visuals.frame(context)` animates world props once per rendered frame from the displayed state, time, viewport and reduced-motion preference. See [world-object validation, timelines and recovery](world-objects.md) and the [complete cannon integration](cannon-integration.md).
 
 ## Decorating
 

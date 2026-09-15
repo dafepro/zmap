@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { networkInterfaces } from "node:os";
 import { createRoomService } from "zmap/server";
+import { cannonBehavior } from "zmap";
 import { ExampleStore } from "./store";
 import { courtyard, catalog, identities } from "./content";
 import { actionYard } from "./action-content";
@@ -45,6 +46,7 @@ const actionServer = createServer((req, res) => {
 const actionService = createRoomService({
   server: actionServer,
   map: actionYard,
+  objectBehaviors: [cannonBehavior],
   catalog: [],
   store: new ExampleStore(
     `${process.env.ZMAP_DATA_DIR ?? ".data/examples-v1"}/action-yard`,

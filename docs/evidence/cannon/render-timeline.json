@@ -1,0 +1,50 @@
+{
+  "fuse": {
+    "diagnostics": {
+      "id": "courtyard-cannon",
+      "phase": "fusing",
+      "progress": 0.4166666666666667,
+      "displayedTick": 114,
+      "lastFire": null,
+      "fireAge": null,
+      "recoil": 0.005,
+      "sparks": 10,
+      "flow": 8,
+      "smoke": 0,
+      "trail": 0
+    },
+    "tick": 114
+  },
+  "fire": {
+    "diagnostics": {
+      "id": "courtyard-cannon",
+      "phase": "fired",
+      "progress": 0,
+      "displayedTick": 128,
+      "lastFire": 2,
+      "fireAge": 0,
+      "recoil": -0.22,
+      "sparks": 0,
+      "flow": 0,
+      "smoke": 16,
+      "trail": 1
+    },
+    "tick": 128
+  },
+  "burst": {
+    "diagnostics": {
+      "id": "courtyard-cannon",
+      "phase": "fired",
+      "progress": 0,
+      "displayedTick": 132,
+      "lastFire": 2,
+      "fireAge": 0.13333333333333333,
+      "recoil": -0.06840582983546806,
+      "sparks": 0,
+      "flow": 0,
+      "smoke": 16,
+      "trail": 5
+    },
+    "tick": 132
+  }
+}

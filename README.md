@@ -18,7 +18,7 @@ Open [the courtyard](http://localhost:5173). The development server also prints 
 - **Explore:** keyboard/touch movement, follow camera, ramp, overlook, bridge and underpass.
 - **Play together:** open the friend link for another real client. Kick the ball onto the golden pad. Close the host's tab and keep playing.
 - **Make it yours:** app-owned inventory; preview, move, rotate, save and return decorations. Ari owns a bench and planter; Sam owns a lantern and planter; Jo owns a planter. Save, leave and return to prove persistence.
-- **[Action Yard](http://localhost:5173/action.html):** three two-handed field tools. Reel and pass an object, brace a rebound panel or charge a ground pulse. Open a friend's view to try their shared effects. See the [world action contract](docs/field-tools.md).
+- **[Action Yard](http://localhost:5173/action.html):** three two-handed field tools and a rear-loaded ball cannon. Choose **Walk to cannon**, then **Kick ball** to feed the gold ball. Watch it load, fuse, and launch through the courtyard; open a friend's view to share the same action. See [field tools](docs/field-tools.md), [world objects](docs/world-objects.md), and the [cannon asset workflow](docs/cannon-workflow.md).
 
 WASD/arrows move relative to the screen. Space kicks, E waves. Click the world to focus keyboard controls. Touch controls appear in the portrait layout. Decorating pauses local movement and focuses the candidate placement. The same identity in a second tab replaces the previous session explicitly; choose another demo identity to play together.
 

@@ -1,6 +1,6 @@
-import { playfulActionCatalog, type WorldMap } from "zmap";
+import { cannonObject, playfulActionCatalog, type WorldMap } from "zmap";
 
-/** This app supplies the room, approved tools and three ordinary movable props. */
+/** This app supplies the room, approved tools, balls and installed world objects. */
 export const actionYard: WorldMap = {
   version: 1,
   id: "action-yard-v1",
@@ -46,6 +46,14 @@ export const actionYard: WorldMap = {
   ],
   toys: [
     {
+      id: "cannon-ball",
+      home: { x: 6, y: 0, z: -6.35 },
+      radius: 0.35,
+      color: "#efba47",
+      sleep: "home",
+      restitution: 0.78,
+    },
+    {
       id: "ball",
       home: { x: -2, y: 0, z: 1.5 },
       radius: 0.32,
@@ -74,4 +82,12 @@ export const actionYard: WorldMap = {
   placementZones: [],
   protectedZones: [],
   actionCatalog: playfulActionCatalog(),
+  objects: [
+    cannonObject("courtyard-cannon", { x: 6, y: 0, z: -4 }, 0, [
+      "cannon-ball",
+      "ball",
+      "blue-ball",
+      "practice-ball",
+    ]),
+  ],
 };

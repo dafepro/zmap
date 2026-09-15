@@ -33,3 +33,26 @@ The [120-second simulation sample](evidence/actions/core-load.json) uses 20 acto
 `tests/browser/navigation.spec.ts` verifies actual click/tap movement, remote persistence, redirection and Escape; terrain routes around a wall and onto the ramp/bridge; joystick capture cancellation; and portrait layout. Pure navigation tests also execute planned paths through ordinary movement physics and reject unsupported gaps, blocked placements and excessive work.
 
 Ball-to-ball tests cover shared substeps, momentum/energy, extreme authored masses, piles, high speeds and terrain separation. Wake Driver tests require a real supported landing before a pulse and replay checkpoints from every physical action phase. These strengthen functional and bounded-state coverage; the outstanding full-room phone, thermal and network percentile qualifications above remain unchanged.
+
+## Cannon and reusable world objects
+
+`tests/cannon.test.ts`, `tests/cannon-server.test.ts` and
+`tests/browser/cannon.spec.ts` qualify the new passive object contract separately
+from wearable field actions. Tests cover source timings and same-ball reuse,
+exclusive chamber claims, real loading travel, swept contacts, toy-only collision
+masks, geometric obstruction, cancellation, cooldown, bounded configurations,
+semantic event validation, unsafe content and deterministic checkpoint replay.
+
+The browser journey uses ordinary path navigation and kicking to feed the cannon.
+Three clients run behind shaped message traffic; a late join receives the active
+fuse, then the actual elected host closes while that fuse still has time remaining.
+The surviving clients must observe one matching launch ID, the same ball, the
+24-tick deadline and the approved muzzle/velocity. Raw host recovery, snapshot and
+frame observations are in [cannon multiplayer evidence](evidence/cannon/multiplayer.json).
+These remain individual local observations rather than percentile qualification.
+
+Separate browser cases cover a missing GLB, portrait reduced motion, route exit
+during asynchronous asset loading and entry failure after movement controls exist.
+Render captures inspect the real asset during fuse, initial recoil and the later
+puff burst. [The asset workflow](cannon-workflow.md) also validates the actual
+export's independent mechanical anchors and interior ball clearance.

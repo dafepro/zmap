@@ -30,6 +30,14 @@ export type VisualOptions = {
   decoration?: (placement: Placement) => THREE.Object3D;
   scenery?: (scene: THREE.Scene, map: WorldMap) => void;
   toy?: (id: string) => THREE.Object3D;
+  /** Once per displayed frame, for scenery driven by the accepted shared timeline.
+   * Time is seconds; simulation tick is the authority for timed object effects. */
+  frame?: (context: {
+    state: Simulation;
+    time: number;
+    reducedMotion: boolean;
+    viewport: THREE.Vector2;
+  }) => void;
 };
 export const screenToWorld = (x: number, y: number) => ({
   x: (x + y) / Math.SQRT2,
@@ -82,6 +90,7 @@ export class WorldView {
   private frameTimes: number[] = [];
   private lastFrame = 0;
   private toyPositions = new Map<string, Vec3>();
+  private toyEpochs = new Map<string, number>();
   private viewport = new THREE.Vector2();
   constructor(
     readonly container: HTMLElement,
@@ -168,6 +177,7 @@ export class WorldView {
     this.lastFrame = 0;
     this.frameTimes = [];
     this.toyPositions.clear();
+    this.toyEpochs.clear();
   }
   private resize() {
     const width = Math.max(1, this.container.clientWidth),
@@ -246,6 +256,7 @@ export class WorldView {
       const previous = this.toyPositions.get(t.id);
       if (
         previous &&
+        (this.toyEpochs.get(t.id) ?? 0) === (b.teleportEpoch ?? 0) &&
         !reducedMotion &&
         Math.hypot(b.x - previous.x, b.z - previous.z) < 2
       ) {
@@ -259,6 +270,7 @@ export class WorldView {
           );
       }
       this.toyPositions.set(t.id, { x: b.x, y: b.y, z: b.z });
+      this.toyEpochs.set(t.id, b.teleportEpoch ?? 0);
     }
     for (const trigger of this.map.triggers) {
       const object = this.scene.getObjectByName(`trigger-${trigger.id}`);
@@ -299,6 +311,12 @@ export class WorldView {
         material.depthWrite = !hidden;
       }
     }
+    this.visuals.frame?.({
+      state,
+      time: time / 1000,
+      reducedMotion,
+      viewport: this.renderer.getDrawingBufferSize(this.viewport),
+    });
     this.renderer.render(this.scene, this.camera);
   }
   private makeDecoration(p: Placement) {

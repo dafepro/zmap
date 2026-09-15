@@ -35,3 +35,27 @@ export type {
 export { findWalkPath, canWalkSegment } from "./navigation.js";
 export type { NavigationOptions, NavigationResult } from "./navigation.js";
 export type { Vec3 } from "./core.js";
+export { spherePathClear } from "./sphere-clearance.js";
+export {
+  cannonBehavior,
+  cannonConfig,
+  cannonObject,
+  cannonLoadingPosition,
+  CANNON_LOADING_TICKS,
+} from "./cannon.js";
+export type { CannonConfig, CannonState, CannonBallState } from "./cannon.js";
+export {
+  objectPoint,
+  objectLocalPoint,
+  validateWorldObjects,
+} from "./world-objects.js";
+export type {
+  ObjectBehavior,
+  ObjectBehaviors,
+  ObjectBehaviorContext,
+  ObjectValue,
+  WorldObject,
+  WorldObjectState,
+  ObjectEvent,
+  ObjectCollider,
+} from "./world-objects.js";

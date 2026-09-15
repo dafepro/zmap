@@ -9,8 +9,10 @@ import {
   type Placement,
   type Rect,
   type Toy,
+  type Vec3,
   type WorldMap,
 } from "./core.js";
+import type { WorldToyCollider } from "./world-objects.js";
 const GRAVITY = 18;
 function reflect(body: Body, nx: number, nz: number, restitution: number) {
   const approach = body.vx * nx + body.vz * nz;
@@ -82,6 +84,7 @@ function constrainToy(
   items: Placement[],
   catalog: ItemType[],
   bounce: boolean,
+  colliders: readonly WorldToyCollider[] = [],
 ) {
   const restitution = bounce ? (toy.restitution ?? 0.65) : 0,
     bounds = map.bounds,
@@ -127,6 +130,37 @@ function constrainToy(
         restitution,
       );
   }
+  for (const collider of colliders) {
+    const bottom = collider.center.y - collider.size.y / 2;
+    if (body.y >= bottom + collider.size.y || body.y + diameter <= bottom)
+      continue;
+    const s = Math.sin(collider.rotation),
+      c = Math.cos(collider.rotation),
+      dx = body.x - collider.center.x,
+      dz = body.z - collider.center.z;
+    const local = {
+      ...body,
+      x: dx * c - dz * s,
+      z: dx * s + dz * c,
+      vx: body.vx * c - body.vz * s,
+      vz: body.vx * s + body.vz * c,
+    };
+    rectangleContact(
+      local,
+      {
+        x: -collider.size.x / 2,
+        z: -collider.size.z / 2,
+        width: collider.size.x,
+        depth: collider.size.z,
+      },
+      r,
+      restitution,
+    );
+    body.x = collider.center.x + local.x * c + local.z * s;
+    body.z = collider.center.z - local.x * s + local.z * c;
+    body.vx = local.vx * c + local.vz * s;
+    body.vz = -local.vx * s + local.vz * c;
+  }
   for (const surface of map.surfaces) {
     const bottom = top(surface, body.z) - surface.thickness;
     if (
@@ -154,7 +188,14 @@ function constrainToy(
 }
 
 /** A 3D sphere contact uses centre heights, never the bottom-of-ball Body.y. */
-function sphereContact(a: Body, ta: Toy, b: Body, tb: Toy, bounce: boolean) {
+function sphereContact(
+  a: Body,
+  ta: Toy,
+  b: Body,
+  tb: Toy,
+  bounce: boolean,
+  held: ReadonlySet<string>,
+) {
   const dx = b.x - a.x,
     dy = b.y + tb.radius - a.y - ta.radius,
     dz = b.z - a.z,
@@ -165,9 +206,10 @@ function sphereContact(a: Body, ta: Toy, b: Body, tb: Toy, bounce: boolean) {
   const nx = distance > 1e-9 ? dx / distance : 1,
     ny = distance > 1e-9 ? dy / distance : 0,
     nz = distance > 1e-9 ? dz / distance : 0,
-    ia = 1 / toyMass(ta),
-    ib = 1 / toyMass(tb),
+    ia = held.has(ta.id) ? 0 : 1 / toyMass(ta),
+    ib = held.has(tb.id) ? 0 : 1 / toyMass(tb),
     sum = ia + ib;
+  if (!sum) return;
   if (distance < radius) {
     const correction = (radius - distance) / sum;
     a.x -= nx * correction * ia;
@@ -181,7 +223,10 @@ function sphereContact(a: Body, ta: Toy, b: Body, tb: Toy, bounce: boolean) {
   if (approach >= 0) return;
   // Resting contacts are inelastic. Repeated solver passes never reapply restitution.
   const e =
-      bounce && approach < -0.75
+      bounce &&
+      approach < -0.75 &&
+      !(held.has(ta.id) && Math.hypot(a.vx, a.vy, a.vz) > 0.001) &&
+      !(held.has(tb.id) && Math.hypot(b.vx, b.vy, b.vz) > 0.001)
         ? Math.min(ta.restitution ?? 0.65, tb.restitution ?? 0.65)
         : 0,
     impulse = (-(1 + e) * approach) / sum;
@@ -257,14 +302,25 @@ export function advanceToys(
   dt: number,
   items: Placement[] = [],
   catalog: ItemType[] = [],
+  held: ReadonlySet<string> = new Set(),
+  colliders: readonly WorldToyCollider[] = [],
+  targets: ReadonlyMap<string, Vec3> = new Map(),
 ) {
   if (!toys.length || dt <= 0) return;
   const ordered = [...toys].sort((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   );
+  const starts = new Map<string, Vec3>();
   for (const toy of ordered) {
     const b = bodies[toy.id];
     if (!validVec(b) || b.y < -8) Object.assign(b, bodyAt(toy.home));
+    if (held.has(toy.id)) {
+      starts.set(toy.id, { x: b.x, y: b.y, z: b.z });
+      const target = targets.get(toy.id) ?? b;
+      b.vx = (target.x - b.x) / dt;
+      b.vy = (target.y - b.y) / dt;
+      b.vz = (target.z - b.z) / dt;
+    }
   }
   const radius = Math.min(...ordered.map((t) => t.radius)),
     speed = Math.max(
@@ -280,6 +336,16 @@ export function advanceToys(
   for (let step = 0; step < count; step++) {
     const previousY = ordered.map((t) => bodies[t.id].y);
     for (const toy of ordered) {
+      if (held.has(toy.id)) {
+        const b = bodies[toy.id],
+          start = starts.get(toy.id)!,
+          target = targets.get(toy.id) ?? start,
+          progress = (step + 1) / count;
+        b.x = start.x + (target.x - start.x) * progress;
+        b.y = start.y + (target.y - start.y) * progress;
+        b.z = start.z + (target.z - start.z) * progress;
+        continue;
+      }
       const b = bodies[toy.id],
         support = supportAt(map, b.x, b.z, b.y + 0.025),
         slope = support?.slope ?? 0,
@@ -303,15 +369,17 @@ export function advanceToys(
     }
     for (let iteration = 0; iteration < 12; iteration++) {
       for (let i = 0; i < ordered.length; i++)
-        constrainToy(
-          map,
-          bodies[ordered[i].id],
-          ordered[i],
-          previousY[i],
-          items,
-          catalog,
-          iteration === 0,
-        );
+        if (!held.has(ordered[i].id))
+          constrainToy(
+            map,
+            bodies[ordered[i].id],
+            ordered[i],
+            previousY[i],
+            items,
+            catalog,
+            iteration === 0,
+            colliders,
+          );
       for (let i = 0; i < ordered.length; i++)
         for (let j = i + 1; j < ordered.length; j++)
           sphereContact(
@@ -320,27 +388,41 @@ export function advanceToys(
             bodies[ordered[j].id],
             ordered[j],
             iteration === 0,
+            held,
           );
     }
     // End with immutable terrain constraints: no pair may leave a ball inside a wall/slab.
     for (let i = 0; i < ordered.length; i++) {
       const toy = ordered[i],
         b = bodies[toy.id];
-      constrainToy(map, b, toy, previousY[i], items, catalog, false);
+      if (held.has(toy.id)) continue;
+      constrainToy(map, b, toy, previousY[i], items, catalog, false, colliders);
       if (b.y < -8) Object.assign(b, bodyAt(toy.home));
     }
-    settleSupports(map, bodies, ordered);
+    settleSupports(
+      map,
+      bodies,
+      ordered.filter((toy) => !held.has(toy.id)),
+    );
     // A propagated support reaction may also meet a nearby wall or ceiling.
     for (let i = 0; i < ordered.length; i++)
-      constrainToy(
-        map,
-        bodies[ordered[i].id],
-        ordered[i],
-        previousY[i],
-        items,
-        catalog,
-        false,
-      );
+      if (!held.has(ordered[i].id))
+        constrainToy(
+          map,
+          bodies[ordered[i].id],
+          ordered[i],
+          previousY[i],
+          items,
+          catalog,
+          false,
+          colliders,
+        );
+  }
+  // Captured trajectories are driven by the mechanism, not momentum. Keep
+  // checkpoint velocities at rest; substeps above used the actual sweep velocity.
+  for (const id of held) {
+    const b = bodies[id];
+    if (b) b.vx = b.vy = b.vz = 0;
   }
 }
 

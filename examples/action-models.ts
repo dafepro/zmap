@@ -166,6 +166,7 @@ export async function loadActionKit(
   }
   let closed = false;
   const toyRadii = new Map<string, number>();
+  const cannonIds = new Set<string>();
   const report = (error: unknown) => {
     if (!closed) {
       try {
@@ -420,16 +421,42 @@ export async function loadActionKit(
             (1 - Math.exp(-18 * dt));
         previousTime = time;
         avatar.object.rotation.y = displayedFacing - body.facing;
-        avatar.update(
-          time,
-          fieldCharacterMotion(
-            body,
-            action,
-            tick,
-            context.reducedMotion,
-            displayedFacing,
-          ),
+        const motion = fieldCharacterMotion(
+          body,
+          action,
+          tick,
+          context.reducedMotion,
+          displayedFacing,
         );
+        // A nearby accepted launch gets a brief startled crouch. This is a pose,
+        // not a local impulse, and never interrupts a player's equipped action.
+        if (!tool && !context.reducedMotion) {
+          for (const event of context.state.objects?.events ?? []) {
+            if (event.kind !== "fire" || !cannonIds.has(event.object)) continue;
+            const data = event.data as {
+              position?: { x: number; y: number; z: number };
+            };
+            const age = (tick - event.tick) / 30;
+            if (
+              !data.position ||
+              age < 0 ||
+              age >= 0.5 ||
+              Math.hypot(body.x - data.position.x, body.z - data.position.z) >
+                5.5 ||
+              Math.abs(body.y + 0.8 - data.position.y) > 1.5
+            )
+              continue;
+            const startle = Math.sin((Math.PI * age) / 0.5);
+            motion.pose = {
+              ...motion.pose,
+              crouch: startle * 0.28,
+              lean: -startle * 0.12,
+              recoil: startle * 0.7,
+              stance: startle * 0.3,
+            };
+          }
+        }
+        avatar.update(time, motion);
         root.updateWorldMatrix(true, true);
         cable.visible = false;
         pulse.visible = false;
@@ -519,6 +546,8 @@ export async function loadActionKit(
     };
   }
   function scenery(scene: THREE.Scene, map: WorldMap) {
+    for (const object of map.objects ?? [])
+      if (object.behavior === "cannon") cannonIds.add(object.id);
     for (const toy of map.toys) toyRadii.set(toy.id, toy.radius);
     for (const b of map.blockers) {
       const object = new THREE.Mesh(
@@ -585,6 +614,7 @@ export async function loadActionKit(
       closed = true;
       for (const item of [...owned]) item.dispose();
       toyRadii.clear();
+      cannonIds.clear();
       library.dispose();
       wieldLibrary.dispose();
     },

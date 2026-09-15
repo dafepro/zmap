@@ -23,6 +23,7 @@ import {
   type DurableState,
   type Simulation,
 } from "./core.js";
+import type { ObjectBehaviors } from "./world-objects.js";
 
 export interface DurableStore {
   load(room: string, map: WorldMap): Promise<DurableState>;
@@ -46,6 +47,7 @@ export type ServiceOptions = {
   capacity?: number;
   allowedOrigins?: string[];
   adapterTimeoutMs?: number;
+  objectBehaviors?: ObjectBehaviors;
 };
 type Peer = {
   id: string;
@@ -80,7 +82,7 @@ type Room = {
   acknowledgesInput: boolean;
 };
 export function createRoomService(options: ServiceOptions) {
-  validateMap(options.map);
+  validateMap(options.map, options.objectBehaviors);
   validateCatalog(options.catalog);
   const wss = new WebSocketServer({
     server: options.server,
@@ -228,7 +230,7 @@ export function createRoomService(options: ServiceOptions) {
     );
     if (room.host === peer.id) elect(room);
     if (!room.peers.size) {
-      room.state = initialSimulation(options.map);
+      room.state = initialSimulation(options.map, options.objectBehaviors);
       rooms.delete(room.id);
     } else broadcast(room, metadata(room));
   };
@@ -294,6 +296,14 @@ export function createRoomService(options: ServiceOptions) {
               ws.close(4400, "This map requires actions-v1");
               return;
             }
+            if (
+              options.map.objects &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("world-objects-v1"))
+            ) {
+              ws.close(4400, "This map requires world-objects-v1");
+              return;
+            }
             const identity = await readAdapter(
               options.authenticate(message.credential, message.room),
             );
@@ -335,7 +345,7 @@ export function createRoomService(options: ServiceOptions) {
                 host: null,
                 epoch: 0,
                 lastSnapshot: Date.now(),
-                state: initialSimulation(options.map),
+                state: initialSimulation(options.map, options.objectBehaviors),
                 durable,
                 actionSequence: 0,
                 pendingActions: [],
@@ -398,6 +408,7 @@ export function createRoomService(options: ServiceOptions) {
               capabilities: [
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
+                ...(options.map.objects ? ["world-objects-v1"] : []),
               ],
             });
             broadcast(room, metadata(room));
@@ -489,14 +500,21 @@ export function createRoomService(options: ServiceOptions) {
             if (
               room.host !== peer.id ||
               message.epoch !== room.epoch ||
-              !validSimulation(message.state, options.map, [
-                ...room.peers.keys(),
-              ]) ||
+              !validSimulation(
+                message.state,
+                options.map,
+                [...room.peers.keys()],
+                options.objectBehaviors,
+              ) ||
               message.state.tick <= room.state.tick ||
               (options.map.actionCatalog &&
                 (message.state.actions.appliedSequence <
                   room.state.actions!.appliedSequence ||
-                  message.state.actions.appliedSequence > room.actionSequence))
+                  message.state.actions.appliedSequence >
+                    room.actionSequence)) ||
+              (options.map.objects &&
+                message.state.objects.eventSequence <
+                  room.state.objects!.eventSequence)
             )
               throw Error("Stale authority or invalid snapshot");
             // Copy only protocol fields; arbitrary nested host payload never reaches peers.
@@ -509,6 +527,9 @@ export function createRoomService(options: ServiceOptions) {
               vz: b.vz,
               facing: b.facing,
               gesture: b.gesture,
+              ...(b.teleportEpoch === undefined
+                ? {}
+                : { teleportEpoch: b.teleportEpoch }),
             });
             room.state = {
               tick: message.state.tick,
@@ -532,6 +553,9 @@ export function createRoomService(options: ServiceOptions) {
               ),
               ...(options.map.actionCatalog
                 ? { actions: structuredClone(message.state.actions) }
+                : {}),
+              ...(options.map.objects
+                ? { objects: structuredClone(message.state.objects) }
                 : {}),
             };
             if (room.state.actions) {

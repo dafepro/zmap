@@ -1,8 +1,9 @@
 import "./action.css";
-import { Zoomap, type ToolId } from "zmap";
+import { cannonBehavior, Zoomap, type CannonState, type ToolId } from "zmap";
 import { actionYard } from "../action-content";
 import { identities } from "../content";
 import { loadActionKit } from "../action-models";
+import { loadCannonKit } from "../cannon-model";
 import {
   createNavigationControls,
   type MovementMode,
@@ -53,6 +54,18 @@ document.querySelector("#app")!.innerHTML = `
 <footer><span>Click / tap to walk <kbd>Q</kbd> Use tool <kbd>Esc</kbd> Stop</span><span>Switch to Joystick for direct movement. Keyboard: <kbd>W A S D</kbd></span><button id="leave" class="text-button">Leave yard ↗</button></footer><details><summary>About this shared field</summary><p>This independent application uses the public Zoomap room and avatar APIs. The active browser simulates bounded shared play; the relay fences its authority and checkpoints actions. No physical result grants inventory, access, rewards or training credit.</p><pre id="diagnostics"></pre></details></main>`;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
+document.querySelector("aside")!.insertAdjacentHTML(
+  "afterbegin",
+  `
+<section class="cannon-card" aria-label="Ball cannon">
+  <p class="eyebrow">NEW IN THE COURTYARD</p><h2>Feed it. Feel the boom.</h2>
+  <p>Push a ball into the teal rear intake. Watch the fuse, then catch its return across the yard.</p>
+  <div class="cannon-timeline" aria-label="Cannon sequence"><span>01 · Feed</span><span>02 · Fuse 0.8s</span><span>03 · Launch</span></div>
+  <strong id="cannon-status" role="status">Getting the cannon ready…</strong>
+  <div class="cannon-buttons"><button id="visit-cannon" disabled>Walk to cannon ↗</button><button id="kick-ball" disabled>Kick ball</button></div>
+  <small>The painted arrows lead into the rear. Stand close behind the ball, then kick or walk forward. Everyone shares the same ball.</small>
+</section>`,
+);
 $("yard").insertAdjacentHTML(
   "afterend",
   `<div class="camera-controls" role="group" aria-label="Camera distance"><button id="camera-wider" aria-label="See more of the yard" title="Wider view">−</button><output id="camera-scale" aria-live="polite">2×</output><button id="camera-closer" aria-label="See the tools closer" title="Closer view">+</button></div>`,
@@ -66,10 +79,12 @@ const use = $<HTMLButtonElement>("use-tool"),
   signal = lifecycle.signal;
 let world: Zoomap | undefined,
   kit: Awaited<ReturnType<typeof loadActionKit>> | undefined,
+  cannon: Awaited<ReturnType<typeof loadCannonKit>> | undefined,
   movement: ReturnType<typeof createNavigationControls> | undefined;
 let closed = false,
   timer: ReturnType<typeof setInterval> | undefined,
   lastEvent = 0,
+  lastObjectEvent = 0,
   initializedEvents = false,
   pendingEquipment: ToolId | null | undefined;
 const messages: string[] = [];
@@ -162,9 +177,21 @@ function refresh() {
     (world.local?.y ?? 0) > 1
       ? `Raised route · ${world.local!.y.toFixed(1)} m`
       : "Ground level";
+  const cannonState = world.state.objects?.instances[
+    "courtyard-cannon"
+  ] as unknown as CannonState | undefined;
+  const fusing = Object.values(cannonState?.balls ?? {}).find(
+    (ball) => ball.phase === "fuse",
+  );
+  $("cannon-status").textContent = fusing
+    ? `Fuse lit · ${Math.max(0, (fusing.untilTick - world.state.tick) / 30).toFixed(1)}s`
+    : "Ready · feed a ball into the rear";
+  $<HTMLButtonElement>("visit-cannon").disabled = !active;
+  $<HTMLButtonElement>("kick-ball").disabled = !active;
   if (!initializedEvents && world.state.actions) {
     lastEvent = world.state.actions.eventSequence;
     initializedEvents = true;
+    lastObjectEvent = world.state.objects?.eventSequence ?? 0;
   }
   for (const event of world.state.actions?.events ?? [])
     if (event.id > lastEvent) {
@@ -191,6 +218,27 @@ function refresh() {
         }),
       );
     }
+  for (const event of world.state.objects?.events ?? [])
+    if (event.id > lastObjectEvent) {
+      lastObjectEvent = event.id;
+      const message = {
+        fuse: "A ball reached the rear intake. Fuse lit!",
+        fire: "The cannon sent that same ball across the field.",
+        cancel: "The ball left the intake. Fuse stopped.",
+        blocked: "The cannon outlet is blocked. Clear its path.",
+      }[event.kind];
+      if (message) {
+        messages.unshift(message);
+        messages.length = Math.min(messages.length, 5);
+        $("activity").replaceChildren(
+          ...messages.map((text) => {
+            const row = document.createElement("li");
+            row.textContent = text;
+            return row;
+          }),
+        );
+      }
+    }
   $("diagnostics").textContent = JSON.stringify(
     {
       session: world.session,
@@ -200,19 +248,27 @@ function refresh() {
       phase: state?.phase,
       traffic: world.traffic,
       field: kit?.diagnostics(),
+      cannon: cannon?.diagnostics(),
     },
     null,
     2,
   );
 }
 function dispose() {
-  if (closed) return;
+  // Pending startup work may complete after pagehide. Release newly completed
+  // resources as well as the first close's live controllers.
   closed = true;
   clearInterval(timer);
+  timer = undefined;
   lifecycle.abort();
   movement?.dispose();
-  world?.dispose();
+  movement = undefined;
+  cannon?.dispose();
+  cannon = undefined;
   kit?.dispose();
+  kit = undefined;
+  world?.dispose();
+  world = undefined;
 }
 window.addEventListener("pagehide", dispose, { once: true });
 async function start() {
@@ -220,14 +276,27 @@ async function start() {
     feedback(`Field component stopped: ${(error as Error).message}`, true),
   );
   if (closed) {
-    kit.dispose();
+    dispose();
+    return;
+  }
+  cannon = await loadCannonKit(actionYard);
+  if (closed) {
+    dispose();
     return;
   }
   world = new Zoomap({
     container: $("yard"),
     map: actionYard,
+    objectBehaviors: [cannonBehavior],
     catalog: [],
-    visuals: { character: kit.character, scenery: kit.scenery },
+    visuals: {
+      character: kit.character,
+      scenery: (scene, map) => {
+        kit!.scenery(scene, map);
+        cannon!.scenery(scene);
+      },
+      frame: cannon.frame,
+    },
     onActionRejected: (reason) => {
       pendingEquipment = undefined;
       feedback(reason, true);
@@ -263,6 +332,22 @@ async function start() {
     status: $("movement-status"),
     stop: $<HTMLButtonElement>("stop-moving"),
   });
+  $("visit-cannon").addEventListener(
+    "click",
+    () => {
+      cancel();
+      movement!.moveTo({ x: 6, y: 0, z: -7.22 });
+      feedback(
+        "Follow the painted arrows. Push or kick the gold ball into the teal rear intake.",
+      );
+    },
+    { signal },
+  );
+  $("kick-ball").addEventListener(
+    "click",
+    () => run(() => world!.action("kick")),
+    { signal },
+  );
   for (const mode of ["path", "joystick"] as MovementMode[])
     $("mode-" + mode).addEventListener(
       "click",
@@ -437,6 +522,7 @@ async function start() {
   (window as any).zoomapActionYard = {
     world,
     kit,
+    cannon,
     map: actionYard,
     movement,
     dispose,
@@ -453,10 +539,11 @@ async function start() {
   world.view.canvas.focus({ preventScroll: true });
 }
 void start().catch((error) => {
-  if (closed) return;
+  const alreadyClosed = closed;
+  dispose();
+  if (alreadyClosed) return;
+  $("loading").hidden = false;
   $("loading").textContent =
     `The field could not open: ${(error as Error).message}. Reload to retry.`;
   feedback((error as Error).message, true);
-  world?.dispose();
-  kit?.dispose();
 });

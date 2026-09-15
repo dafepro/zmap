@@ -1,0 +1,38 @@
+{
+  "reviewDate": "2026-09-15",
+  "assets": {
+    "assets/concepts/cannon/turnaround.png": {
+      "bytes": 2141620,
+      "sha256": "fe866efdfd27621199a31d8ad9366cde4a408b28db0235ad44cac16f81ccb9f5"
+    },
+    "assets/source/cannon/ball-cannon.blend": {
+      "bytes": 2252012,
+      "sha256": "f701b60cb21fa41cba48ea1c4a45dfd8951ba8741425ce986a4d9d73b6c7cb97"
+    },
+    "examples/hub/public/models/ball-cannon.glb": {
+      "bytes": 721264,
+      "sha256": "0ff050f14e34d135cf4781a07c0c724d0b0e7d32a88b37428b35b4e1c9a2cc11"
+    }
+  },
+  "checks": {
+    "unitAndSocket": {
+      "passed": 92,
+      "log": "/tmp/zmap-cannon-clearance-tests.log"
+    },
+    "completeBrowserSuite": {
+      "passed": 23,
+      "log": "/tmp/zmap-cannon-final-browser.log",
+      "note": "Before final radius-aware clearance hardening; all six cannon browser cases rerun afterwards."
+    },
+    "finalCannonBrowserSuite": {
+      "passed": 6,
+      "log": "/tmp/zmap-cannon-final-targeted-browser.log"
+    },
+    "productionBuild": "passed",
+    "independentTarballConsumer": "passed: ESM, types, complete cannon load/fire cycle and browser bundle",
+    "format": "passed"
+  },
+  "limitations": [
+    "Local desktop and simulated traffic only; physical-phone/full-room/thermal/WAN percentile requirements remain unqualified."
+  ]
+}

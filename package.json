@@ -60,6 +60,7 @@
     "src",
     "docs/field-tools.md",
     "docs/navigation.md",
-    "docs/physics.md"
+    "docs/physics.md",
+    "docs/world-objects.md"
   ]
 }

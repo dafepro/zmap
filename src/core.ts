@@ -1,5 +1,15 @@
 import { advanceToys } from "./toy-physics.js";
 import {
+  initialWorldObjects,
+  stepWorldObjects,
+  validWorldObjectState,
+  validateWorldObjects,
+  worldToyColliders,
+  type ObjectBehaviors,
+  type WorldObject,
+  type WorldObjectState,
+} from "./world-objects.js";
+import {
   initialActionState,
   stepActions,
   finishActions,
@@ -51,6 +61,7 @@ export type WorldMap = {
   placementZones: Rect[];
   protectedZones: Rect[];
   actionCatalog?: WorldActionCatalog;
+  objects?: WorldObject[];
 };
 export type Identity = { id: string; name: string; appearance: string };
 export type Input = {
@@ -66,6 +77,8 @@ export type Body = Vec3 & {
   vz: number;
   facing: number;
   gesture: number;
+  /** Increment on an intentional discontinuity; display must not interpolate across it. */
+  teleportEpoch?: number;
 };
 export type Simulation = {
   tick: number;
@@ -73,6 +86,7 @@ export type Simulation = {
   toys: Record<string, Body>;
   triggers: Record<string, number>;
   actions?: WorldActionState;
+  objects?: WorldObjectState;
 };
 export type ItemType = {
   id: string;
@@ -152,7 +166,10 @@ export function validateCatalog(catalog: ItemType[]) {
     ids.add(t.id);
   }
 }
-export function validateMap(map: WorldMap) {
+export function validateMap(
+  map: WorldMap,
+  objectBehaviors: ObjectBehaviors = [],
+) {
   if (map.actionCatalog !== undefined) validateActionCatalog(map.actionCatalog);
   const rect = (r: Rect) =>
     r &&
@@ -237,6 +254,7 @@ export function validateMap(map: WorldMap) {
       throw Error("Invalid trigger");
     ids.add(t.id);
   }
+  validateWorldObjects(map, objectBehaviors);
   const support = supportAt(map, map.spawn.x, map.spawn.z, map.spawn.y + 0.01);
   if (!support || Math.abs(top(support, map.spawn.z) - map.spawn.y) > 0.02)
     throw Error("Spawn has no support");
@@ -368,13 +386,19 @@ export function movePlayer(
   if (i.wave) body.gesture = 1.2;
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);
 }
-export function initialSimulation(map: WorldMap): Simulation {
+export function initialSimulation(
+  map: WorldMap,
+  objectBehaviors: ObjectBehaviors = [],
+): Simulation {
   return {
     tick: 0,
     players: {},
     toys: Object.fromEntries(map.toys.map((t) => [t.id, bodyAt(t.home)])),
     triggers: Object.fromEntries(map.triggers.map((t) => [t.id, 0])),
     ...(map.actionCatalog ? { actions: initialActionState() } : {}),
+    ...(map.objects
+      ? { objects: initialWorldObjects(map, objectBehaviors) }
+      : {}),
   };
 }
 export function stepWorld(
@@ -384,9 +408,17 @@ export function stepWorld(
   items: Placement[] = [],
   catalog: ItemType[] = [],
   commands: readonly ActionCommand[] = [],
+  objectBehaviors: ObjectBehaviors = [],
 ) {
   state.tick++;
   stepActions(map, state, inputs, commands, items, catalog);
+  const { held: heldToys, targets: heldTargets } = stepWorldObjects(
+    map,
+    state,
+    objectBehaviors,
+    items,
+    catalog,
+  );
   for (const [id, b] of Object.entries(state.players)) {
     const action = state.actions?.players[id];
     if (actionMovementLocked(action))
@@ -406,6 +438,7 @@ export function stepWorld(
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   )) {
     const b = state.toys[t.id];
+    if (heldToys.has(t.id)) continue;
     for (const [id, p] of Object.entries(state.players).sort(([a], [b]) =>
       a < b ? -1 : a > b ? 1 : 0,
     )) {
@@ -457,7 +490,17 @@ export function stepWorld(
       }
     }
   }
-  advanceToys(map, state.toys, map.toys, STEP, items, catalog);
+  advanceToys(
+    map,
+    state.toys,
+    map.toys,
+    STEP,
+    items,
+    catalog,
+    heldToys,
+    worldToyColliders(map),
+    heldTargets,
+  );
   for (const key of Object.keys(state.triggers))
     state.triggers[key] = Math.max(0, state.triggers[key] - STEP);
 }
@@ -512,6 +555,7 @@ export function validSimulation(
   state: any,
   map: WorldMap,
   playerIds: string[],
+  objectBehaviors: ObjectBehaviors = [],
 ): state is Simulation {
   const body = (b: any) =>
     b &&
@@ -524,7 +568,9 @@ export function validSimulation(
     b.y >= -8 &&
     b.y <= 30 &&
     b.gesture >= 0 &&
-    b.gesture <= 2;
+    b.gesture <= 2 &&
+    (b.teleportEpoch === undefined ||
+      (Number.isSafeInteger(b.teleportEpoch) && b.teleportEpoch >= 0));
   return (
     state &&
     Number.isSafeInteger(state.tick) &&
@@ -543,7 +589,8 @@ export function validSimulation(
         state.triggers[t.id] >= 0 &&
         state.triggers[t.id] <= t.cooldown,
     ) &&
-    validActionState(state.actions, map, playerIds, state.tick)
+    validActionState(state.actions, map, playerIds, state.tick) &&
+    validWorldObjectState(state.objects, map, state.tick, objectBehaviors)
   );
 }
 

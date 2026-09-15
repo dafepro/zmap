@@ -1,0 +1,32 @@
+{
+  "revision": 3,
+  "blender": "5.2.1 LTS",
+  "file": "models/ball-cannon.glb",
+  "bytes": 721264,
+  "triangles": 14000,
+  "sourceMeshes": 189,
+  "runtimeMeshes": 9,
+  "drawPrimitives": 38,
+  "source": "assets/source/cannon/build_cannon.py",
+  "concept": "assets/concepts/cannon/turnaround.png",
+  "anchors": {
+    "intake": [
+      0,
+      0.85,
+      -1.12
+    ],
+    "muzzle": [
+      0,
+      0.85,
+      1.32
+    ]
+  },
+  "namedMotion": [
+    "barrel_recoil",
+    "gauge_needle",
+    "indicator_0",
+    "indicator_1",
+    "indicator_2",
+    "fuse_tip"
+  ]
+}

@@ -17,8 +17,53 @@ try {
     }),
   );
   run("npm", ["install", join(dir, "zmap-0.1.0.tgz"), "--ignore-scripts"]);
-  const source =
-    "import { Zoomap, findWalkPath, canWalkSegment, actionMovementLocked, WAKE_MOTION } from 'zmap'; import { createRoomService } from 'zmap/server'; import { validateMap } from 'zmap/core'; if ([Zoomap,createRoomService,validateMap,findWalkPath,canWalkSegment,actionMovementLocked,Zoomap.prototype.setWorldInput].some(f => typeof f !== 'function')) throw Error('Missing export'); if (WAKE_MOTION.jumpSpeed <= 0) throw Error('Missing motion contract');";
+  const source = `
+import { Zoomap, findWalkPath, canWalkSegment, actionMovementLocked, WAKE_MOTION,
+  cannonBehavior, cannonObject, objectPoint, spherePathClear, CANNON_LOADING_TICKS } from 'zmap';
+import { createRoomService } from 'zmap/server';
+import { validateMap, initialSimulation, stepWorld } from 'zmap/core';
+if ([Zoomap, createRoomService, validateMap, findWalkPath, canWalkSegment,
+  actionMovementLocked, Zoomap.prototype.setWorldInput, cannonObject,
+  objectPoint, spherePathClear, cannonBehavior.validEvent].some(f => typeof f !== 'function'))
+  throw Error('Missing export');
+if (WAKE_MOTION.jumpSpeed <= 0 || CANNON_LOADING_TICKS !== 12) throw Error('Missing motion contract');
+const map = JSON.parse('${JSON.stringify({
+    version: 1,
+    id: "consumer-cannon",
+    bounds: { x: -10, z: -10, width: 20, depth: 20 },
+    spawn: { x: -4, y: 0, z: -4 },
+    surfaces: [
+      {
+        id: "ground",
+        x: -10,
+        z: -10,
+        width: 20,
+        depth: 20,
+        y: 0,
+        thickness: 0.3,
+      },
+    ],
+    blockers: [],
+    toys: [
+      {
+        id: "ball",
+        home: { x: 0, y: 0, z: -1.7 },
+        radius: 0.35,
+        color: "white",
+        sleep: "home",
+      },
+    ],
+    triggers: [],
+    placementZones: [],
+    protectedZones: [],
+  })}');
+map.objects = [cannonObject('consumer-cannon', { x: 0, y: 0, z: 0 }, 0, ['ball'])];
+validateMap(map, [cannonBehavior]);
+const state = initialSimulation(map, [cannonBehavior]);
+for (let i = 0; i < 26; i++) stepWorld(map, state, {}, [], [], [], [cannonBehavior]);
+if (state.objects?.events.filter(event => event.kind === 'fire').length !== 1)
+  throw Error('Independent consumer did not load and fire its existing ball');
+`;
   writeFileSync(join(dir, "check.mjs"), source);
   run("node", ["check.mjs"]);
   writeFileSync(join(dir, "check.ts"), source);

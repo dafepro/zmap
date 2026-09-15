@@ -1,0 +1,323 @@
+{
+  "provenance": "Three actual browser clients, public navigation and Kick button only; 75ms each direction ±15ms jitter and every50th snapshot dropped. Jo rejoined during the fuse; the actual elected host closed with fuse ticks remaining. One desktop sample, not a physical-phone or p95 claim.",
+  "before": {
+    "ids": [
+      "ball",
+      "blue-ball",
+      "cannon-ball",
+      "practice-ball"
+    ],
+    "epoch": 2,
+    "asset": {
+      "ready": true,
+      "assetBytes": 721264,
+      "instances": [
+        {
+          "id": "courtyard-cannon",
+          "phase": "ready",
+          "progress": 0,
+          "displayedTick": 164.95,
+          "lastFire": null,
+          "fireAge": null,
+          "recoil": 0,
+          "sparks": 0,
+          "flow": 0,
+          "smoke": 0,
+          "trail": 0
+        }
+      ]
+    }
+  },
+  "fused": {
+    "id": 1,
+    "tick": 181,
+    "object": "courtyard-cannon",
+    "kind": "fuse",
+    "data": {
+      "toy": "cannon-ball",
+      "position": {
+        "x": 6.037036134224313,
+        "y": 0.17822976924473172,
+        "z": -5.719999990038446
+      }
+    }
+  },
+  "joining": {
+    "tick": 182,
+    "session": "6d8c39bb-9769-4dd7-be8e-28052a25442d",
+    "object": {
+      "balls": {
+        "cannon-ball": {
+          "phase": "fuse",
+          "startedTick": 181,
+          "untilTick": 205,
+          "position": {
+            "x": 6.037036134224313,
+            "y": 0.17822976924473172,
+            "z": -5.719999990038446
+          }
+        }
+      }
+    },
+    "events": [
+      {
+        "id": 1,
+        "tick": 181,
+        "object": "courtyard-cannon",
+        "kind": "fuse",
+        "data": {
+          "toy": "cannon-ball",
+          "position": {
+            "x": 6.037036134224313,
+            "y": 0.17822976924473172,
+            "z": -5.719999990038446
+          }
+        }
+      }
+    ]
+  },
+  "launch": {
+    "id": 2,
+    "tick": 205,
+    "object": "courtyard-cannon",
+    "kind": "fire",
+    "data": {
+      "toy": "cannon-ball",
+      "position": {
+        "x": 6,
+        "y": 0.85,
+        "z": -2.6799999999999997
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 14
+      }
+    }
+  },
+  "recoveryMs": 807,
+  "departedHost": {
+    "host": "dc93e53f-5e6d-4f07-95a8-28bfcc4c72bf",
+    "session": "dc93e53f-5e6d-4f07-95a8-28bfcc4c72bf",
+    "epoch": 2,
+    "tick": 186,
+    "phase": "fuse",
+    "remainingTicks": 19
+  },
+  "ids": [
+    "ball",
+    "blue-ball",
+    "cannon-ball",
+    "practice-ball"
+  ],
+  "state": {
+    "tick": 216,
+    "players": {
+      "6347bc7e-ebdc-42ab-a28d-cdc82153866e": {
+        "x": 5.950393190737192,
+        "y": 0,
+        "z": -7.193832408113869,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 2.0562011350721514,
+        "gesture": 0
+      },
+      "6d8c39bb-9769-4dd7-be8e-28052a25442d": {
+        "x": -2,
+        "y": 0,
+        "z": -3,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      }
+    },
+    "toys": {
+      "cannon-ball": {
+        "x": 6,
+        "y": 0.2981062500000003,
+        "z": 2.874975040344973,
+        "vx": 0,
+        "vy": 0.40950000000000164,
+        "vz": 13.777782480774029,
+        "facing": 0,
+        "gesture": 0,
+        "teleportEpoch": 1
+      },
+      "ball": {
+        "x": -2,
+        "y": 0,
+        "z": 1.5000000000000004,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      },
+      "blue-ball": {
+        "x": 4.5,
+        "y": 0,
+        "z": 1.5000000000000004,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      },
+      "practice-ball": {
+        "x": -7,
+        "y": 0,
+        "z": 3.0000000000000004,
+        "vx": 0,
+        "vy": 0,
+        "vz": 0,
+        "facing": 0,
+        "gesture": 0
+      }
+    },
+    "triggers": {},
+    "actions": {
+      "version": 1,
+      "appliedSequence": 3,
+      "eventSequence": 0,
+      "players": {
+        "6347bc7e-ebdc-42ab-a28d-cdc82153866e": {
+          "tool": null,
+          "phase": "idle",
+          "held": false,
+          "aim": {
+            "x": 0.8844861516251243,
+            "z": -0.4665664449822529
+          },
+          "aimManual": false,
+          "cooldownUntil": 0,
+          "cooldowns": {
+            "tether-winch": 0,
+            "rebound-panel": 0,
+            "wake-driver": 0
+          },
+          "phaseStarted": 92,
+          "phaseUntil": 92,
+          "lastHeldTick": 0,
+          "target": null,
+          "sequence": 2,
+          "impulse": {
+            "x": 0,
+            "z": 0
+          },
+          "immuneUntil": 0
+        },
+        "6d8c39bb-9769-4dd7-be8e-28052a25442d": {
+          "tool": null,
+          "phase": "idle",
+          "held": false,
+          "aim": {
+            "x": 0,
+            "z": 1
+          },
+          "aimManual": false,
+          "cooldownUntil": 0,
+          "cooldowns": {
+            "tether-winch": 0,
+            "rebound-panel": 0,
+            "wake-driver": 0
+          },
+          "phaseStarted": 0,
+          "phaseUntil": 0,
+          "lastHeldTick": 0,
+          "target": null,
+          "sequence": 0,
+          "impulse": {
+            "x": 0,
+            "z": 0
+          },
+          "immuneUntil": 0
+        }
+      },
+      "events": []
+    },
+    "objects": {
+      "version": 1,
+      "eventSequence": 2,
+      "instances": {
+        "courtyard-cannon": {
+          "balls": {
+            "cannon-ball": {
+              "phase": "cooldown",
+              "startedTick": 205,
+              "untilTick": 228,
+              "position": {
+                "x": 6,
+                "y": 0.5,
+                "z": -2.6799999999999997
+              }
+            }
+          }
+        }
+      },
+      "events": [
+        {
+          "id": 1,
+          "tick": 181,
+          "object": "courtyard-cannon",
+          "kind": "fuse",
+          "data": {
+            "toy": "cannon-ball",
+            "position": {
+              "x": 6.037036134224313,
+              "y": 0.17822976924473172,
+              "z": -5.719999990038446
+            }
+          }
+        },
+        {
+          "id": 2,
+          "tick": 205,
+          "object": "courtyard-cannon",
+          "kind": "fire",
+          "data": {
+            "toy": "cannon-ball",
+            "position": {
+              "x": 6,
+              "y": 0.85,
+              "z": -2.6799999999999997
+            },
+            "velocity": {
+              "x": 0,
+              "y": 0,
+              "z": 14
+            }
+          }
+        }
+      ]
+    }
+  },
+  "cannon": {
+    "ready": true,
+    "assetBytes": 721264,
+    "instances": [
+      {
+        "id": "courtyard-cannon",
+        "phase": "fired",
+        "progress": 0,
+        "displayedTick": 215.49800000000002,
+        "lastFire": 2,
+        "fireAge": 0.349933333333334,
+        "recoil": 0.020774678315586867,
+        "sparks": 0,
+        "flow": 0,
+        "smoke": 16,
+        "trail": 11
+      }
+    ]
+  },
+  "renderer": {
+    "frameP95Ms": 16.700000000000728,
+    "drawCalls": 148,
+    "triangles": 52112,
+    "geometries": 155,
+    "textures": 18
+  }
+}
