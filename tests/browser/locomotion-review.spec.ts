@@ -34,7 +34,6 @@ test("authored source and modular avatars render matched gait phases, transition
   expect(clips.has("Walking_A") || clips.has("Walking_B")).toBe(true);
   for (const clip of [
     "Running_A",
-    "Walking_Backwards",
     "Running_Strafe_Left",
     "Running_Strafe_Right",
   ])
@@ -46,6 +45,14 @@ test("authored source and modular avatars render matched gait phases, transition
         .map((record: any) => record.locomotion.reversed),
     ),
   ).toEqual(new Set([true]));
+  const backwardWalk = steady.filter(
+    (record: any) => record.pace === "Backward walk",
+  );
+  expect(backwardWalk.length).toBeGreaterThan(0);
+  for (const record of backwardWalk) {
+    expect(record.locomotion.clip).toBe("Walking_B");
+    expect(record.locomotion.reversed).toBe(true);
+  }
   for (const record of result.records) {
     const reference = record.sourceReference;
     expect(reference.clip).toBe(

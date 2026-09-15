@@ -40,7 +40,7 @@ const paces = [
   { name: "Sprint", clips: ["Running_A"], speed: 5.4, x: 0, z: 1 },
   {
     name: "Backward walk",
-    clips: ["Walking_Backwards"],
+    clips: ["Walking_B"],
     speed: 2.2,
     x: 0,
     z: -1,
@@ -86,7 +86,12 @@ function driveAt(time: number): Drive {
   if (time < 9)
     return { x: 0, z: 0, heading: Math.PI / 2, label: "Stop and settle" };
   if (time < 10.4)
-    return { x: 0, z: -2.2, heading: 0, label: "Backward walk · authored" };
+    return {
+      x: 0,
+      z: -2.2,
+      heading: 0,
+      label: "Backward walk · compact reverse",
+    };
   if (time < 11.3)
     return {
       x: -4,
@@ -633,7 +638,7 @@ export async function mountLocomotionReview(
   title.style.fontSize = "24px";
   const caption = document.createElement("p");
   caption.textContent =
-    "KayKit source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share evaluated source phase; neutral rest is compared with source T-pose. Backward walk and strafes are authored. Backward sprint reverses Running_A. The source mannequin has different proportions and some native sole penetration.";
+    "KayKit source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share evaluated source phase; neutral rest is compared with source T-pose. Backward walk uses a compact reversed Walking_B. Strafes are authored; backward sprint reverses Running_A. The source mannequin has different proportions and some native sole penetration.";
   const controls = document.createElement("div");
   controls.style.cssText =
     "display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap";

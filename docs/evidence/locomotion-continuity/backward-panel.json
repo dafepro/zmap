@@ -1,0 +1,161 @@
+{
+  "method": "Backward 2.2 m/s, actual rebound panel, 5 seconds with first second excluded. Avatar-space vertical head and item motion after ground fitting and exact grip solving.",
+  "cases": [
+    {
+      "weight": -1,
+      "fps": 60,
+      "phase": "idle",
+      "head": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      },
+      "panel": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": -1,
+      "fps": 60,
+      "phase": "braced",
+      "head": {
+        "range": 0.06523066348771756,
+        "peakJerk": 4325.229722303983
+      },
+      "panel": {
+        "range": 0.0652306634877442,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": -1,
+      "fps": 120,
+      "phase": "idle",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    },
+    {
+      "weight": -1,
+      "fps": 120,
+      "phase": "braced",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104188
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    },
+    {
+      "weight": 0,
+      "fps": 60,
+      "phase": "idle",
+      "head": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      },
+      "panel": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": 0,
+      "fps": 60,
+      "phase": "braced",
+      "head": {
+        "range": 0.06523066348771756,
+        "peakJerk": 4325.229722303983
+      },
+      "panel": {
+        "range": 0.0652306634877442,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": 0,
+      "fps": 120,
+      "phase": "idle",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    },
+    {
+      "weight": 0,
+      "fps": 120,
+      "phase": "braced",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104188
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    },
+    {
+      "weight": 1,
+      "fps": 60,
+      "phase": "idle",
+      "head": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      },
+      "panel": {
+        "range": 0.06523066348771489,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": 1,
+      "fps": 60,
+      "phase": "braced",
+      "head": {
+        "range": 0.06523066348771756,
+        "peakJerk": 4325.229722303983
+      },
+      "panel": {
+        "range": 0.0652306634877442,
+        "peakJerk": 4325.229722303936
+      }
+    },
+    {
+      "weight": 1,
+      "fps": 120,
+      "phase": "idle",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    },
+    {
+      "weight": 1,
+      "fps": 120,
+      "phase": "braced",
+      "head": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104188
+      },
+      "panel": {
+        "range": 0.06541497898277271,
+        "peakJerk": 6789.544888104572
+      }
+    }
+  ]
+}

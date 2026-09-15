@@ -47,3 +47,5 @@ all seven joints plus carrier height. Example maximum head vertical jerk at
 Backward walking still has the strongest contact acceleration. Its separate
 regression bound makes that visible rather than hiding it in a global average.
 This review does not claim every transition has a universal bounded jerk.
+
+The table above records the initial continuity pass. The later compact-backward-walk update lowers head and rebound-panel travel to 6.54 cm and peak jerk to about 6,790 m/s³ at 120 Hz. The new panel-specific gate requires less than 8 cm travel and 10,000 m/s³ jerk in held/braced states. See [current panel measurements](evidence/locomotion-continuity/backward-panel.json).
