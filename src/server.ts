@@ -51,6 +51,7 @@ export type ServiceOptions = {
 };
 type Peer = {
   id: string;
+  authority: Identity;
   identity: Identity;
   ws: WebSocket;
   seen: number;
@@ -405,6 +406,7 @@ export function createRoomService(options: ServiceOptions) {
             rooms.set(room.id, room);
             peer = {
               id: randomUUID(),
+              authority: identity,
               identity: {
                 id: identity.id,
                 name: identity.name.slice(0, 30),
@@ -451,7 +453,9 @@ export function createRoomService(options: ServiceOptions) {
             return;
           }
           if (!room || !room.peers.has(peer.id)) return;
-          if (!(await readAdapter(options.canAccess(peer.identity, room.id)))) {
+          if (
+            !(await readAdapter(options.canAccess(peer.authority, room.id)))
+          ) {
             ws.close(4403, "Access expired");
             depart(room, peer);
             return;
@@ -668,7 +672,7 @@ export function createRoomService(options: ServiceOptions) {
           try {
             if (
               Date.now() - peer.seen > 8000 ||
-              !(await readAdapter(options.canAccess(peer.identity, room.id)))
+              !(await readAdapter(options.canAccess(peer.authority, room.id)))
             ) {
               peer.ws.close(4403, "Session expired");
               depart(room, peer);

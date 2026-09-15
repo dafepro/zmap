@@ -427,3 +427,42 @@ test("ineligible heartbeats do not re-elect an unchanged empty host", async () =
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("continuing access retains the authenticated identity context privately", async () => {
+  const trusted = new WeakSet<object>();
+  const dir = await mkdtemp(join(tmpdir(), "zmap-authority-"));
+  const http = createServer();
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    store: new ExampleStore(dir, () => true),
+    authenticate: async () => {
+      const identity = { ...identities.ari, privateGrant: "relay-only" };
+      trusted.add(identity);
+      return identity;
+    },
+    canAccess: async (identity) => trusted.has(identity),
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const a = connect(
+    `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`,
+    "ari",
+  );
+  try {
+    const initial = await a.wait("room");
+    assert.equal(JSON.stringify(initial).includes("relay-only"), false);
+    a.send({ type: "heartbeat", eligible: true });
+    await sleep(350);
+    assert.equal(
+      a.ws.readyState,
+      WebSocket.OPEN,
+      "continuing checks use the original trusted context",
+    );
+  } finally {
+    a.ws.terminate();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});
