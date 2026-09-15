@@ -1,5 +1,7 @@
 # Zoomap / zmap
 
+[Architecture website](examples/hub/architecture.html) · [Zoomigo v3 / Team World agent handoff](docs/zoomigo-v3-agent-prompt.md). With the demo running, open `http://localhost:5173/architecture.html`.
+
 A reusable browser library for small shared worlds: direct character control, a following camera, real height, shared toys and app-controlled decorating.
 
 This is an **independent v3 first playable**. Canvas informed the audit; there is no Canvas dependency, compatibility layer or legacy migration. Zoomigo is the first intended consumer, not a dependency of the library.

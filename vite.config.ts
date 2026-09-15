@@ -25,6 +25,7 @@ export default defineConfig({
       input: {
         main: "examples/hub/index.html",
         action: "examples/hub/action.html",
+        architecture: "examples/hub/architecture.html",
       },
     },
   },

@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#172a2b" />
+    <title>Zoomap Atlas · From world engine to Team World</title>
+    <style>
+      :root {
+        --paper: #f5f2e9;
+        --ink: #172a2b;
+        --muted: #596968;
+        --line: #ccd3c7;
+        --green: #c9e5a9;
+        --orange: #f6b775;
+        --lav: #d4cef1;
+        --blue: #bce0e9;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 30px;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font:
+          16px/1.65 system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 4px;
+      }
+      a:hover {
+        color: #98602d;
+      }
+      button,
+      a {
+        touch-action: manipulation;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 3px solid #b75a23;
+        outline-offset: 5px;
+      }
+      .skip {
+        position: absolute;
+        left: 12px;
+        top: -100px;
+      }
+      .skip:focus {
+        top: 12px;
+        background: white;
+        padding: 10px;
+        z-index: 10;
+      }
+      header {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 22px 5vw;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+      }
+      header strong {
+        letter-spacing: 0.2em;
+        font-size: 13px;
+      }
+      nav {
+        display: flex;
+        gap: 24px;
+        font-size: 13px;
+      }
+      nav a {
+        text-decoration: none;
+      }
+      main {
+        max-width: 1240px;
+        margin: auto;
+        padding: 0 42px;
+      }
+      section {
+        padding: 70px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        font:
+          700 11px/1.5 ui-monospace,
+          monospace;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .hero {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 60px;
+        align-items: center;
+        padding: 85px 0 65px;
+      }
+      h1 {
+        font-size: clamp(42px, 6vw, 76px);
+        line-height: 1.04;
+        letter-spacing: -0.065em;
+        margin: 20px 0 25px;
+        font-weight: 650;
+      }
+      h2 {
+        font-size: clamp(29px, 4vw, 43px);
+        line-height: 1.15;
+        letter-spacing: -0.045em;
+        margin: 12px 0 22px;
+      }
+      h3 {
+        font-size: 21px;
+        line-height: 1.3;
+        margin: 12px 0;
+      }
+      .lead {
+        font-size: 20px;
+        line-height: 1.55;
+        max-width: 680px;
+        color: var(--muted);
+      }
+      p {
+        margin: 12px 0;
+      }
+      .muted,
+      small {
+        color: var(--muted);
+      }
+      .stamp {
+        display: inline-block;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 5px 11px;
+        font:
+          12px ui-monospace,
+          monospace;
+      }
+      .stack {
+        transform: rotate(-2deg);
+        display: grid;
+        gap: 10px;
+      }
+      .stack div {
+        padding: 23px 25px;
+        border: 1px solid var(--ink);
+        box-shadow: 5px 5px 0 var(--ink);
+        border-radius: 4px;
+      }
+      .stack b {
+        display: block;
+        font-size: 22px;
+        letter-spacing: -0.04em;
+      }
+      .stack span {
+        font-size: 13px;
+      }
+      .stack .app {
+        background: var(--green);
+      }
+      .stack .world {
+        background: var(--blue);
+        margin-left: 22px;
+      }
+      .stack .avatar {
+        background: var(--lav);
+        margin-left: 44px;
+      }
+      .section-head {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 22px;
+      }
+      .section-head p {
+        max-width: 430px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .card {
+        border: 1px solid var(--line);
+        padding: 26px;
+        border-radius: 8px;
+        background: #fffdf6;
+      }
+      .card .num {
+        font:
+          13px ui-monospace,
+          monospace;
+      }
+      .card code {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      .accent-green {
+        border-top: 5px solid var(--green);
+      }
+      .accent-blue {
+        border-top: 5px solid var(--blue);
+      }
+      .accent-lav {
+        border-top: 5px solid var(--lav);
+      }
+      .accent-orange {
+        border-top: 5px solid var(--orange);
+      }
+      .card ul {
+        padding-left: 19px;
+      }
+      .note {
+        padding: 22px 26px;
+        background: #e8ebdf;
+        border-left: 3px solid var(--ink);
+        margin-top: 25px;
+      }
+      .flow {
+        border: 1px solid var(--line);
+        background: #fffdf6;
+        border-radius: 8px;
+        padding: 32px;
+      }
+      .flow-row {
+        display: grid;
+        grid-template-columns: 1fr 70px 1fr;
+        align-items: center;
+        gap: 16px;
+        margin: 18px 0;
+      }
+      .node {
+        border: 1px solid var(--ink);
+        padding: 18px 22px;
+        border-radius: 4px;
+      }
+      .node b {
+        display: block;
+      }
+      .node small {
+        display: block;
+      }
+      .arrow {
+        text-align: center;
+        font-size: 30px;
+      }
+      .flow-label {
+        font:
+          12px ui-monospace,
+          monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .trust {
+        border-top: 2px dashed #8a9690;
+        margin: 24px 0;
+        padding-top: 18px;
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th {
+        text-align: left;
+        font-size: 11px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        padding: 15px 14px;
+        background: var(--ink);
+        color: white;
+      }
+      td {
+        vertical-align: top;
+        border-bottom: 1px solid var(--line);
+        padding: 17px 14px;
+      }
+      td:first-child {
+        font-weight: 650;
+        min-width: 150px;
+      }
+      code {
+        font:
+          13px ui-monospace,
+          monospace;
+        background: #e9ebe2;
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+      pre {
+        background: #172a2b;
+        color: #f5f2e9;
+        padding: 24px;
+        border-radius: 8px;
+        overflow: auto;
+        font:
+          13px/1.7 ui-monospace,
+          monospace;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+        color: inherit;
+      }
+      .steps {
+        counter-reset: steps;
+        display: grid;
+        gap: 0;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 60px 1fr;
+        border-bottom: 1px solid var(--line);
+        padding: 20px 0;
+      }
+      .step:before {
+        counter-increment: steps;
+        content: "0" counter(steps);
+        font:
+          24px ui-monospace,
+          monospace;
+        color: #79887a;
+      }
+      .step h3 {
+        margin: 0 0 8px;
+      }
+      .pill {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 20px;
+        background: var(--green);
+        display: inline-block;
+      }
+      .pill.pending {
+        background: var(--orange);
+      }
+      details {
+        border: 1px solid var(--line);
+        padding: 18px 22px;
+        border-radius: 6px;
+        margin: 12px 0;
+      }
+      summary {
+        cursor: pointer;
+        font-weight: 650;
+      }
+      summary::marker {
+        color: #789069;
+      }
+      .source-links {
+        display: grid;
+        gap: 12px;
+      }
+      .cta {
+        background: var(--ink);
+        color: var(--paper);
+        padding: 42px;
+        border-radius: 8px;
+        margin: 30px 0;
+      }
+      .cta h2 {
+        max-width: 640px;
+      }
+      .cta p {
+        color: #d2d9cd;
+      }
+      .button {
+        display: inline-block;
+        padding: 12px 20px;
+        border-radius: 5px;
+        background: var(--green);
+        color: var(--ink);
+        font-weight: 650;
+        text-decoration: none;
+        border: 0;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      .button.secondary {
+        background: transparent;
+        color: var(--paper);
+        border: 1px solid #819085;
+        margin-left: 12px;
+      }
+      .prompt {
+        white-space: pre-wrap;
+        max-height: 440px;
+        overflow: auto;
+        font-size: 13px;
+        line-height: 1.8;
+        background: #233738;
+      }
+      footer {
+        padding: 35px 0 50px;
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+      }
+      .keyline {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        margin-top: 25px;
+      }
+      .keyline span {
+        font-size: 12px;
+        border-bottom: 2px solid var(--line);
+        padding-bottom: 5px;
+      }
+      @media (max-width: 760px) {
+        main {
+          padding: 0 22px;
+        }
+        header {
+          align-items: flex-start;
+        }
+        nav {
+          gap: 10px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 35px;
+          padding: 50px 0;
+        }
+        .stack {
+          max-width: 430px;
+          margin: 0 12px 20px 0;
+        }
+        .cards,
+        .split {
+          grid-template-columns: 1fr;
+        }
+        .section-head {
+          display: block;
+        }
+        section {
+          padding: 45px 0;
+        }
+        .flow {
+          padding: 18px;
+        }
+        .flow-row {
+          grid-template-columns: 1fr;
+        }
+        .arrow {
+          transform: rotate(90deg);
+          line-height: 1;
+        }
+        .cta {
+          padding: 26px;
+        }
+        .button.secondary {
+          margin: 12px 0 0;
+        }
+        .step {
+          grid-template-columns: 45px 1fr;
+        }
+        footer {
+          display: block;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+      @media print {
+        header,
+        nav,
+        .button {
+          display: none;
+        }
+        main {
+          max-width: none;
+          padding: 0;
+        }
+        section {
+          padding: 25px 0;
+        }
+        .hero {
+          padding: 25px 0;
+        }
+        body {
+          font-size: 11px;
+        }
+        .card,
+        .flow,
+        .cta {
+          break-inside: avoid;
+        }
+        h1 {
+          font-size: 40px;
+        }
+        .prompt {
+          max-height: none;
+        }
+        .stack {
+          transform: none;
+        }
+        a {
+          color: inherit;
+        }
+        .cta {
+          background: #eee;
+          color: #111;
+        }
+        .cta p {
+          color: #111;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#overview">Skip to architecture</a>
+    <header>
+      <strong>ZOOMAP / ATLAS</strong>
+      <nav aria-label="Sections">
+        <a href="#overview">Structure</a><a href="#runtime">Runtime</a
+        ><a href="#assets">Assets</a><a href="#handoff">V3 handoff ↗</a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div>
+          <span class="eyebrow"
+            >Architecture field guide · 15 September 2026</span
+          >
+          <h1>One team world.<br />Clear building blocks.</h1>
+          <p class="lead">
+            The world, the characters, and the app that gives them meaning. A
+            guide to what we have—and how it becomes Zoomigo’s next lounge.
+          </p>
+          <div class="keyline">
+            <span>Independent v3</span><span>Reusable packages</span
+            ><span>App-owned policy</span>
+          </div>
+        </div>
+        <div class="stack" aria-label="Product layers">
+          <div class="app">
+            <b>Zoomigo · Team World</b
+            ><span>The team’s product experience and trusted policy</span>
+          </div>
+          <div class="world">
+            <b>Zoomap · powered by zmap</b
+            ><span>The shared place, movement and interactions</span>
+          </div>
+          <div class="avatar">
+            <b>Avatar Studio</b
+            ><span>The modular characters, gear and animation</span>
+          </div>
+        </div>
+      </section>
+      <section id="overview">
+        <span class="eyebrow">01 / Names, without the ambiguity</span>
+        <h2>Zoomap and zmap are not two engines.</h2>
+        <p class="lead">
+          <strong>Zoomap</strong> is the user-facing name.
+          <strong>zmap</strong> is the repository and package name. “Team World”
+          is a proposed Zoomigo feature name, not another library.
+        </p>
+        <div class="cards">
+          <article class="card accent-blue">
+            <span class="num">WORLD CAPABILITY</span>
+            <h3>zmap</h3>
+            <code>zmap · zmap/core · zmap/server</code>
+            <p>
+              Reusable browser world and Node room service. Movement, surfaces,
+              collisions, toys, synchronized rooms, placement and recovery.
+            </p>
+            <p>
+              <small
+                >Source: <a data-source="src/index.ts">src/</a> · Package
+                0.1.0</small
+              >
+            </p>
+          </article>
+          <article class="card accent-lav">
+            <span class="num">CHARACTER CAPABILITY</span>
+            <h3>Avatar Studio</h3>
+            <code>@zmap/avatar-studio</code>
+            <p>
+              Independent modular avatar runtime plus a customization app and
+              Blender authoring kit. It can run without zmap.
+            </p>
+            <p>
+              <small
+                >Source:
+                <a data-source="avatar-studio/README.md">avatar-studio/</a> ·
+                Package 0.1.0</small
+              >
+            </p>
+          </article>
+          <article class="card accent-green">
+            <span class="num">CONSUMING PRODUCT</span>
+            <h3>Zoomigo</h3>
+            <code>dafepro/fc-workout-pwa</code>
+            <p>
+              Owns the real people, teams, access, saved appearance, inventory,
+              rewards and training. The v3 adapter still needs to be built.
+            </p>
+            <p>
+              <small
+                >Feature proposal: private <strong>Team World</strong></small
+              >
+            </p>
+          </article>
+        </div>
+        <div class="note">
+          <strong>The demos are consumers, too.</strong> The courtyard,
+          decorating example and Fieldwork Action Yard live under
+          <code>examples/</code>. They connect the packages using sample
+          identity, content and persistence. They are useful implementation
+          references, not production Zoomigo adapters.
+        </div>
+      </section>
+      <section id="runtime">
+        <span class="eyebrow">02 / How a session works</span>
+        <h2>Three layers. Two kinds of authority.</h2>
+        <div class="flow">
+          <div class="flow-label">In the player’s browser</div>
+          <div class="flow-row">
+            <div class="node" style="background: var(--green)">
+              <b>Zoomigo route + adapter</b
+              ><small>Enter / exit, approved appearance, UI, controls</small>
+            </div>
+            <div class="arrow" aria-label="supplies">→</div>
+            <div class="node" style="background: var(--blue)">
+              <b>Zoomap client</b
+              ><small
+                >Camera, input, prediction, render loop, shared state</small
+              >
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="node" style="background: var(--lav)">
+              <b>Avatar runtime + approved assets</b
+              ><small
+                >Prepared character factory, fitting, poses, held gear</small
+              >
+            </div>
+            <div class="arrow" aria-label="supplies">→</div>
+            <div class="node">
+              <b>Character presentation</b
+              ><small>Accepted world state becomes motion and effects</small>
+            </div>
+          </div>
+          <div class="trust">
+            <div class="flow-label">
+              Trusted service boundary · WebSocket / app-issued credentials
+            </div>
+          </div>
+          <div class="flow-row">
+            <div class="node" style="background: var(--blue)">
+              <b>zmap room service</b
+              ><small
+                >Authenticate, access checks, relay, host lease + epoch</small
+              >
+            </div>
+            <div class="arrow" aria-label="calls">→</div>
+            <div class="node" style="background: var(--green)">
+              <b>Zoomigo adapters + database</b
+              ><small
+                >Membership, entitlements, atomic saved edits + receipts</small
+              >
+            </div>
+          </div>
+        </div>
+        <div class="split" style="margin-top: 24px">
+          <div>
+            <h3>Transient world authority</h3>
+            <p>
+              One eligible browser simulates the room at <strong>30 Hz</strong>.
+              It publishes checkpoints at <strong>15 Hz</strong>; clients
+              interpolate display frames and predict local movement. The relay
+              fences host changes with epochs. Hidden or stalled hosts yield; an
+              empty room runs no world simulation.
+            </p>
+            <p class="muted">
+              This is browser-hosted simulation with a WebSocket relay—not an
+              always-running server physics loop or a peer mesh.
+            </p>
+          </div>
+          <div>
+            <h3>Durable product authority</h3>
+            <p>
+              Zoomigo’s trusted store checks ownership, current entitlement,
+              placement, revision and idempotency before saving a layout. A
+              browser host can influence transient play; it cannot grant
+              inventory, training credit, team access or rewards.
+            </p>
+            <p class="muted">
+              Deploy one writer per room. Distributed ownership and a production
+              database adapter are not supplied by the reference service.
+            </p>
+          </div>
+        </div>
+      </section>
+      <section id="ownership">
+        <span class="eyebrow">03 / Where a change belongs</span>
+        <h2>A practical ownership map.</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Change</th>
+                <th>Owner</th>
+                <th>Integration seam</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Team entry and privacy</td>
+                <td>Zoomigo</td>
+                <td>
+                  Room-scoped credential → <code>authenticate</code> +
+                  <code>canAccess</code>; safe roster identity
+                </td>
+              </tr>
+              <tr>
+                <td>Movement, collisions, shared balls</td>
+                <td>zmap</td>
+                <td>
+                  <code>WorldMap</code>, movement APIs and core simulation
+                </td>
+              </tr>
+              <tr>
+                <td>Map theme and lounge controls</td>
+                <td>Zoomigo content + UI</td>
+                <td>
+                  Approved map/catalog and <code>visuals</code>; examples
+                  demonstrate composition
+                </td>
+              </tr>
+              <tr>
+                <td>Avatar shape, hair, clothes, fitting</td>
+                <td>Avatar Studio runtime + assets</td>
+                <td>
+                  Validated <code>Catalog</code> + <code>Recipe</code>,
+                  <code>AvatarLibrary</code>
+                </td>
+              </tr>
+              <tr>
+                <td>Who can wear or place an item</td>
+                <td>Zoomigo</td>
+                <td>
+                  Approved recipe selection and transactional entitlement checks
+                </td>
+              </tr>
+              <tr>
+                <td>Holding, drawing, stowing and emotes</td>
+                <td>Avatar Studio presentation; zmap shared timeline</td>
+                <td>
+                  <code>WieldController</code> and approved performance catalog
+                </td>
+              </tr>
+              <tr>
+                <td>Winch, rebound or ground-pulse forces</td>
+                <td>zmap behavior; Avatar Studio visuals</td>
+                <td>
+                  Accepted action phases drive fitted equipment and animation
+                </td>
+              </tr>
+              <tr>
+                <td>Cannon’s launch versus its recoil</td>
+                <td>zmap launch; consumer visual adapter</td>
+                <td>
+                  <code>objectBehaviors</code> on client/service;
+                  <code>visuals.frame</code> renders mechanics and VFX
+                </td>
+              </tr>
+              <tr>
+                <td>Saved layout and retry safety</td>
+                <td>Zoomigo trusted persistence</td>
+                <td>
+                  <code>DurableStore.load/commit</code>; atomic layout +
+                  idempotency receipt
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="assets">
+        <span class="eyebrow">04 / Characters are their own system</span>
+        <h2>Author once. Assemble through contracts.</h2>
+        <div class="split">
+          <div>
+            <p class="lead">
+              “Avatar builder” means three related things—not a dependency on
+              the studio’s whole website.
+            </p>
+            <div class="steps">
+              <div class="step">
+                <div>
+                  <h3>The runtime</h3>
+                  <p>
+                    <code>avatar-studio/src/</code> validates recipes, loads
+                    verified assets, assembles skinned components, fits
+                    accessories, animates the rig and owns exact hand grips. No
+                    accounts, room transport or UI renderer.
+                  </p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h3>The design studio</h3>
+                  <p>
+                    <code>avatar-studio/app/</code> is a separate browser
+                    consumer: customization, body build, views, equipment
+                    inspection, look JSON and portrait export. Current saved
+                    looks are browser-local; Zoomigo must persist approved
+                    recipes.
+                  </p>
+                </div>
+              </div>
+              <div class="step">
+                <div>
+                  <h3>The source asset kit</h3>
+                  <p>
+                    <code>avatar-studio/assets/source/</code> holds editable
+                    Blender files, generators and reference material.
+                    <code>public/</code> holds the versioned runtime catalogs
+                    and GLBs.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <article class="card accent-lav">
+              <h3>Compatibility is a contract</h3>
+              <p>
+                Fixed-height body builds grow tissue around limb centerlines.
+                Shared sockets and bind frames align clothes and equipment.
+                Accessories declare fitting and selective hair interaction;
+                glasses arms can disappear into hair without carving a
+                surrounding hole.
+              </p>
+              <p>
+                One hat does not require a separately modeled variant of every
+                hairstyle. But arbitrary meshes are not automatically
+                compatible: author correct pivots, fit volumes, rig weights and
+                anchors, then qualify combinations.
+              </p>
+              <p>
+                <strong>Current presentation:</strong> angular cel/ink
+                rendering, reference-based walking and running, five emotes,
+                draw/stow and left/right/shared grips. The 16-view export is a
+                fixed-pose atlas—not an animated sprite system.
+              </p>
+            </article>
+            <div class="note">
+              <strong>Content workflow</strong>
+              <p>
+                Concept reference → front / side / top studies → interactive
+                Blender modeling → named parts and anchors → verified
+                GLB/catalog export → actual browser inspection → fit, motion and
+                resource tests.
+              </p>
+              <small
+                >Retain source and provenance. Validate the in-engine result,
+                not only the Blender render.</small
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="integration">
+        <span class="eyebrow">05 / Connect the pieces</span>
+        <h2>
+          The adapter is intentionally small.<br />The responsibilities are
+          explicit.
+        </h2>
+        <div class="split">
+          <div>
+            <pre><code>// Browser contract outline—not a complete app.
+import { Zoomap } from 'zmap';
+import { AvatarLibrary } from '@zmap/avatar-studio';
+
+const library = new AvatarLibrary(catalog, assetBase);
+const createAvatar = await library.prepare(approvedRecipe);
+const world = new Zoomap({
+  container, map, catalog: worldItemTypes,
+  visuals: {
+    character: () => createAvatar().asCharacter()
+  }
+});
+await world.enter({
+  url: relayUrl,
+  room: teamRoomId,
+  credential: issueFreshRoomCredential
+});
+// On route exit, release both owners:
+world.dispose();
+library.dispose();</code></pre>
+            <small
+              >This single-look outline demonstrates the seam. A real adapter
+              resolves each roster identity to its approved recipe and connects
+              equipment, performance and scenery presentation. See
+              <a data-source="examples/models.ts">examples/models.ts</a> and
+              <a data-source="examples/action-models.ts"
+                >examples/action-models.ts</a
+              >.</small
+            >
+          </div>
+          <div class="steps">
+            <div class="step">
+              <div>
+                <h3>Approve and preload</h3>
+                <p>
+                  Resolve app-owned appearance keys into validated recipes.
+                  Serve versioned catalog/GLB assets from your own static path.
+                  Prepare factories before the synchronous character hook is
+                  called.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Join with real access</h3>
+                <p>
+                  Mint fresh credentials for the requested team room. The relay
+                  delegates authentication and continuing access checks to
+                  trusted app adapters. Replace every demo identity and token.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Render accepted activity</h3>
+                <p>
+                  Pass avatar-facing velocity and accepted presentation time
+                  into animation. Keep gameplay consequences in shared
+                  simulation; use avatar and scenery hooks for display.
+                </p>
+              </div>
+            </div>
+            <div class="step">
+              <div>
+                <h3>Save and release correctly</h3>
+                <p>
+                  Commit edits transactionally. Keep stable retry IDs for
+                  unknown outcomes. On route exit, dispose the world and owned
+                  character/asset resources. Training routes should not load
+                  game code.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="note">
+          <strong>Packaging today:</strong> both packages are private at version
+          <code>0.1.0</code>. Avatar Studio has its own lockfile, build and
+          tests inside the repository; it is not currently a separate Git
+          submodule. Establish pinned, reproducible package delivery for Zoomigo
+          rather than assuming public npm releases. Use one Three.js copy and
+          deploy matching client, relay and catalogs.
+        </div>
+      </section>
+      <section id="readiness">
+        <span class="eyebrow">06 / What is proved, and what comes next</span>
+        <h2>A working foundation.<br />A real integration still to build.</h2>
+        <div class="cards">
+          <article class="card accent-blue">
+            <span class="pill">Implemented + exercised</span>
+            <h3>Shared world</h3>
+            <p>
+              Real height, paths, sprint, collisions, toys, cannon, field tools,
+              late join, host recovery, placement and durable retry contracts.
+            </p>
+            <p>
+              <small
+                >Socket, simulation and multi-browser evidence in
+                <a data-source="docs/multiplayer-coverage.md"
+                  >multiplayer coverage</a
+                >.</small
+              >
+            </p>
+          </article>
+          <article class="card accent-lav">
+            <span class="pill">Implemented + exercised</span>
+            <h3>Modular characters</h3>
+            <p>
+              Approved component kit, body builds, fitting, expressive equipment
+              and reference-based motion. Latest walking change passed 154
+              avatar tests and both focused browser review suites.
+            </p>
+            <p>
+              <small
+                >Evidence baseline: <code>f135c7c</code>. Counts describe that
+                run, not a new certification.</small
+              >
+            </p>
+          </article>
+          <article class="card accent-orange">
+            <span class="pill pending">Integration + qualification</span>
+            <h3>Production Team World</h3>
+            <p>
+              Real Zoomigo credentials, database writes, saved looks,
+              deployment/restart handling and physical-phone performance
+              qualification remain.
+            </p>
+            <p>
+              <small
+                >Twenty accepted sockets is not proof of twenty rendered avatars
+                on a phone.</small
+              >
+            </p>
+          </article>
+        </div>
+        <details>
+          <summary>Performance and operations boundaries</summary>
+          <p>
+            The proposed release matrix includes 20 distinct avatars, 50
+            placements with five active complex toys, 15-minute phone runs,
+            cold/warm entry, transport-level impairment, recovery distributions
+            and measured cost. Existing desktop and message-shaped tests cover
+            only part of that matrix. Distributed relay ownership,
+            graphics-context recovery and database unknown-outcome handling
+            remain explicit follow-ups.
+          </p>
+        </details>
+        <details>
+          <summary>What “independent v3” changes</summary>
+          <p>
+            Build a new lounge with its own versioned room state. No conversion
+            of alpha Canvas maps, coordinates or placements is required. Keep
+            unrelated Zoomigo accounts and training intact. Historical migration
+            instructions in the original brief are superseded by this scope. A
+            pilot can be disabled without introducing Canvas fallback or
+            concurrent writers to the same room.
+          </p>
+        </details>
+        <details>
+          <summary>Sources of truth and useful entry points</summary>
+          <div class="source-links">
+            <a data-source="docs/api.md">Public browser/service contracts →</a
+            ><a data-source="docs/operations.md"
+              >Service deployment and persistence boundaries →</a
+            ><a data-source="docs/multiplayer-coverage.md"
+              >Functional and nonfunctional test coverage →</a
+            ><a data-source="avatar-studio/docs/contracts.md"
+              >Avatar catalog and recipe contracts →</a
+            ><a data-source="avatar-studio/docs/accessory-fitting.md"
+              >Accessory fitting →</a
+            ><a data-source="avatar-studio/docs/motion.md"
+              >Walking, animation and held-item ownership →</a
+            ><a data-source="docs/cannon-integration.md"
+              >Cannon integration →</a
+            >
+          </div>
+        </details>
+      </section>
+      <section id="handoff">
+        <span class="eyebrow">07 / The next implementation</span>
+        <div class="cta">
+          <span class="eyebrow">Agent handoff</span>
+          <h2>Build Team World inside Zoomigo.</h2>
+          <p>
+            A fresh v3 team lounge that consumes the current packages, with real
+            access, saved appearances and durable app policy.
+          </p>
+          <button class="button" id="copy-prompt" type="button">
+            Copy integration prompt</button
+          ><a
+            class="button secondary"
+            data-source="docs/zoomigo-v3-agent-prompt.md"
+            >Open handoff document ↗</a
+          >
+          <p id="copy-status" role="status" aria-live="polite"></p>
+          <details>
+            <summary>Read the complete prompt</summary>
+            <pre class="prompt" id="agent-prompt">
+# Build Zoomigo v3: Team World
+
+Integrate the current zmap world runtime and modular Avatar Studio into `dafepro/fc-workout-pwa` as a new, independent v3 team lounge, working title **Team World**. Deliver a working, tested integration—not just a plan. This is a fresh successor to the alpha Canvas v2 lounge; no old room, placement, coordinate or avatar-data migration is required. Preserve unrelated Zoomigo account and training functionality. Do not build a legacy fallback or dual-write bridge.
+
+Start by reading each repository&#x27;s AGENTS.md and current source-of-truth docs. Inspect and record both checked-out commits. In zmap, read `examples/hub/architecture.html`, `docs/api.md`, `docs/operations.md`, `docs/multiplayer-coverage.md`, `docs/shared-performances.md`, and `avatar-studio/README.md` plus its contracts, accessory-fitting, wielding and motion docs. Read the original intent/specs/handoff as background; this fresh-v3 instruction supersedes their migration requirements. Reconcile historical status entries against current code and test evidence. Audit Zoomigo&#x27;s actual lounge routes, authentication, team authorization, deployment, inventory and appearance storage before choosing adapters.
+
+Keep these boundaries:
+- **Zoomigo** owns identity, team membership, private room access, inventory/unlocks, approved appearance choices, persistence and all reward/training policy.
+- **zmap** owns movement, real-height terrain, collisions, shared toy/action simulation, room synchronization, host recovery and placement mechanics. Its browser simulation host is untrusted for valuable outcomes.
+- **@zmap/avatar-studio** owns validated modular appearance, fitting, animation, equipment grips and presentation. Its customization UI is a separate consumer, not required inside the world engine.
+- **The Zoomigo integration layer** maps approved recipes to characters and accepted simulation state to animation. Use public contracts; fix missing reusable capabilities upstream rather than duplicating or forking the engine inside Zoomigo.
+
+Build a lazy-loaded Team World route with the current courtyard/Fieldwork content as the first playable map: click/tap path movement, joystick, sprint, shared balls, cannon, field tools, emotes and draw/stow. Include an integrated appearance editor backed by approved catalogs and app-owned saved recipes. Preserve the existing angular cel/ink style, current walking improvements, accessory fitting and exact one-/two-hand grips. Use the established imagegen → front/side/top references → interactive Blender → in-engine inspection pipeline if new assets are necessary.
+
+Replace example identities/tokens and the example file store with real app adapters: short-lived room-scoped credentials, membership revalidation, explicit origin allowlist, safe roster projection and transactional durable edits with ownership/entitlement checks, revision CAS and stable idempotency receipts. Treat identity.appearance as an app-resolved approved appearance key; do not cram recipe JSON into it. Keep transient actions out of reward and inventory authority. Use versioned assets and compatible client/relay/catalog releases; fail clearly on invalid content instead of silently substituting assets. Dispose all world, input, network and graphics resources on route exit. Loading, denial and failure states must leave the rest of Zoomigo usable.
+
+Both packages are currently private local packages, not assumed npm releases. Establish and verify reproducible pinned package delivery and static asset serving in Zoomigo CI. Account for a persistent WebSocket relay and one writer per room; do not assume a stateless deployment or multiple uncoordinated relay replicas will work. Document database write deadlines, unknown-outcome reconciliation, service restart behavior and a pilot disable/rollback procedure that preserves new v3 data. This is deployment rollback, not Canvas conversion.
+
+Track implementation and acceptance evidence in the repositories. Test real separate authenticated users, cross-team/expired-access denial, same-user tab replacement, late join, simultaneous tool interactions, host closure/stall, reconnect, sprint release, room isolation, persisted layout after restart, lost edit acknowledgments, saved appearance validation and repeated route mount/unmount. Review all movement directions with held gear. Run package, unit and browser suites appropriate to the changes. Qualify the proposed full-room phone/network/load/cost budgets on named hardware; desktop CI and the existing 20-socket test do not establish mobile production readiness. State unmeasured targets explicitly.
+
+Proceed in working increments, resolve ordinary design choices autonomously, and finish with a runnable demo, integration docs, tests, measured limitations and release steps. Commit and push zmap only as dafepro using repository-local Git identity/credentials; follow Zoomigo&#x27;s own repository rules without changing machine-wide accounts.
+</pre>
+          </details>
+        </div>
+        <p class="muted">
+          This guide describes the local zmap implementation. It does not claim
+          a fresh audit of Zoomigo’s current branch; that audit is the
+          integration agent’s first step.
+        </p>
+      </section>
+      <footer>
+        <span>Zoomap Atlas / architecture snapshot · 2026-09-15</span
+        ><span
+          >Self-contained HTML · no remote fonts, scripts or runtime
+          dependencies</span
+        >
+      </footer>
+    </main>
+    <script>
+      const sourceBase =
+        "https://github.com/dafepro/zmap/blob/codex/reference-avatar-base/";
+      document.querySelectorAll("[data-source]").forEach((a) => {
+        a.href = sourceBase + a.dataset.source;
+      });
+      document
+        .getElementById("copy-prompt")
+        .addEventListener("click", async () => {
+          const text = document.getElementById("agent-prompt").textContent;
+          const status = document.getElementById("copy-status");
+          try {
+            await navigator.clipboard.writeText(text);
+            status.textContent = "Copied. Paste into a new agent task.";
+          } catch {
+            document.querySelector("#handoff details").open = true;
+            const range = document.createRange();
+            range.selectNodeContents(document.getElementById("agent-prompt"));
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            status.textContent =
+              "Prompt selected. Copy it with your keyboard or browser menu.";
+          }
+        });
+    </script>
+  </body>
+</html>
