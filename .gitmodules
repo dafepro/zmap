@@ -1,0 +1,3 @@
+[submodule "avatar-studio"]
+	path = avatar-studio
+	url = https://github.com/dafepro/zmap-avatar-studio.git

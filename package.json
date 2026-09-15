@@ -1,6 +1,6 @@
 {
   "name": "zmap",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "description": "Reusable browser-hosted worlds with real height and app-owned policy",
@@ -63,5 +63,9 @@
     "docs/physics.md",
     "docs/world-objects.md",
     "docs/shared-performances.md"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dafepro/zmap.git"
+  }
 }

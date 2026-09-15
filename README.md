@@ -11,7 +11,9 @@ This is an **independent v3 first playable**. Canvas informed the audit; there i
 Node 22.12+:
 
 ```sh
+git submodule update --init --recursive
 npm ci
+npm --prefix avatar-studio ci
 npm run dev
 ```
 
@@ -51,7 +53,7 @@ world.dispose();
 
 `zmap` supplies the browser view and lifecycle. `zmap/core` supplies the headless content and simulation contracts. `zmap/server` supplies a single-process relay/coordinator with required app authentication, current-access and transactional storage adapters. Identity, inventory, rewards and content approval remain with the app.
 
-The package is private pending release decisions. `npm run build:lib` produces ESM and declarations; `npm pack` creates an installable local package. The example imports public package exports, with the development export condition selecting source during local work.
+Both runtimes ship as built **v0.1.1 GitHub Release tarballs**. Follow [package installation](docs/integration-packages.md) in Zoomigo; no development submodule is needed in the consuming app. `npm run build:lib` produces ESM and declarations; `npm pack` creates the installable package. The example imports public package exports, with the development export condition selecting source during local work.
 
 ## Verify
 
@@ -79,9 +81,9 @@ Physical-phone qualification, representative full-room load, WAN fault/cost meas
 
 ## Modular avatar studio
 
-The independent [Avatar Studio](avatar-studio/README.md) provides 22 original Blender parts, a versioned appearance contract and an editor at `http://localhost:5180` (`npm --prefix avatar-studio ci`, then `npm --prefix avatar-studio run dev`). It includes a comic view with toon lighting, outlines and orthographic projection.
+The independent [Avatar Studio repository](https://github.com/dafepro/zmap-avatar-studio) provides the modular Blender component kit, versioned appearance contracts and an editor at `http://localhost:5180` (`npm --prefix avatar-studio ci`, then `npm --prefix avatar-studio run dev`). It includes a comic view with toon lighting, outlines and orthographic projection.
 
-The hub consumes the same package through approved prepared factories in `examples/models.ts`. `npm run dev` and `npm run typecheck` build that package and copy its catalog/models into the example's generated public assets. Application identity selects approved recipes; ZMap still receives only character visuals. The standalone studio builds and tests independently of the parent repository.
+The hub consumes the same package through approved prepared factories in `examples/models.ts`. `npm run dev` and `npm run typecheck` build that package and copy its catalog/models into the example's generated public assets. Application identity selects approved recipes; ZMap still receives only character visuals. The standalone studio builds and tests in its own repository and CI. This checkout pins it as a development submodule. See [repository map](docs/repository-map.md) for ownership and coordinated changes.
 
 See [multiplayer coverage](docs/multiplayer-coverage.md) for the tested functional boundaries, impaired-network method and the remaining full-room/device performance qualification.
 

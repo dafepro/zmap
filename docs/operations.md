@@ -34,4 +34,4 @@ Before publishing a monthly number, record client/server CPU and memory, active/
 
 ## Release scope
 
-Use `npm run build` for declarations/ESM plus static example output in `dist`. The relay must be deployed separately with a same-origin `/room` WebSocket reverse proxy. Packaging is locally smoke-tested; no package, website or production Zoomigo deployment was published. This is independent v3: fresh app adoption does not require legacy migration tools or a Canvas fallback. Retain current-format durable records when rolling application code back and refuse unsupported versions explicitly.
+Use `npm run build` for declarations/ESM plus static example output in `dist`. The relay must be deployed separately with a same-origin `/room` WebSocket reverse proxy. Built v0.1.1 GitHub Release packages are available as described in [package delivery](integration-packages.md). No production Zoomigo deployment is included. This is independent v3: fresh app adoption does not require legacy migration tools or a Canvas fallback. Retain current-format durable records when rolling application code back and refuse unsupported versions explicitly.

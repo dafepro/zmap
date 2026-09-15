@@ -606,7 +606,7 @@
               <small
                 >Source:
                 <a data-source="avatar-studio/README.md">avatar-studio/</a> ·
-                Package 0.1.0</small
+                Package 0.1.1</small
               >
             </p>
           </article>
@@ -969,12 +969,19 @@ library.dispose();</code></pre>
           </div>
         </div>
         <div class="note">
-          <strong>Packaging today:</strong> both packages are private at version
-          <code>0.1.0</code>. Avatar Studio has its own lockfile, build and
-          tests inside the repository; it is not currently a separate Git
-          submodule. Establish pinned, reproducible package delivery for Zoomigo
-          rather than assuming public npm releases. Use one Three.js copy and
-          deploy matching client, relay and catalogs.
+          <strong>Packaging today:</strong> both packages have built
+          <code>v0.1.1</code> GitHub Release tarballs. Avatar Studio now lives
+          in
+          <a href="https://github.com/dafepro/zmap-avatar-studio"
+            >dafepro/zmap-avatar-studio</a
+          >, with independent history and CI. The
+          <code>avatar-studio/</code> directory in zmap is a pinned development
+          submodule. Zoomigo installs release packages without the submodule.
+          Use one Three.js copy and deploy matching client, relay and catalogs.
+          See
+          <a data-source="docs/integration-packages.md"
+            >installation instructions</a
+          >.
         </div>
       </section>
       <section id="readiness">
@@ -1095,9 +1102,10 @@ library.dispose();</code></pre>
 
 Integrate the current zmap world runtime and modular Avatar Studio into `dafepro/fc-workout-pwa` as a new, independent v3 team lounge, working title **Team World**. Deliver a working, tested integration—not just a plan. This is a fresh successor to the alpha Canvas v2 lounge; no old room, placement, coordinate or avatar-data migration is required. Preserve unrelated Zoomigo account and training functionality. Do not build a legacy fallback or dual-write bridge.
 
-Start by reading each repository&#x27;s AGENTS.md and current source-of-truth docs. Inspect and record both checked-out commits. In zmap, read `examples/hub/architecture.html`, `docs/api.md`, `docs/operations.md`, `docs/multiplayer-coverage.md`, `docs/shared-performances.md`, and `avatar-studio/README.md` plus its contracts, accessory-fitting, wielding and motion docs. Read the original intent/specs/handoff as background; this fresh-v3 instruction supersedes their migration requirements. Reconcile historical status entries against current code and test evidence. Audit Zoomigo&#x27;s actual lounge routes, authentication, team authorization, deployment, inventory and appearance storage before choosing adapters.
+Start by reading each repository&#x27;s AGENTS.md and current source-of-truth docs. Use `main` in `dafepro/zmap` and `dafepro/zmap-avatar-studio`; record their commits and the Zoomigo commit. For zmap development clone with `--recurse-submodules`. In zmap, read `examples/hub/architecture.html`, `docs/api.md`, `docs/operations.md`, `docs/multiplayer-coverage.md`, `docs/shared-performances.md`, and `avatar-studio/README.md` plus its contracts, accessory-fitting, wielding and motion docs. Read the original intent/specs/handoff as background; this fresh-v3 instruction supersedes their migration requirements. Reconcile historical status entries against current code and test evidence. Audit Zoomigo&#x27;s actual lounge routes, authentication, team authorization, deployment, inventory and appearance storage before choosing adapters.
 
 Keep these boundaries:
+
 - **Zoomigo** owns identity, team membership, private room access, inventory/unlocks, approved appearance choices, persistence and all reward/training policy.
 - **zmap** owns movement, real-height terrain, collisions, shared toy/action simulation, room synchronization, host recovery and placement mechanics. Its browser simulation host is untrusted for valuable outcomes.
 - **@zmap/avatar-studio** owns validated modular appearance, fitting, animation, equipment grips and presentation. Its customization UI is a separate consumer, not required inside the world engine.
@@ -1107,7 +1115,7 @@ Build a lazy-loaded Team World route with the current courtyard/Fieldwork conten
 
 Replace example identities/tokens and the example file store with real app adapters: short-lived room-scoped credentials, membership revalidation, explicit origin allowlist, safe roster projection and transactional durable edits with ownership/entitlement checks, revision CAS and stable idempotency receipts. Treat identity.appearance as an app-resolved approved appearance key; do not cram recipe JSON into it. Keep transient actions out of reward and inventory authority. Use versioned assets and compatible client/relay/catalog releases; fail clearly on invalid content instead of silently substituting assets. Dispose all world, input, network and graphics resources on route exit. Loading, denial and failure states must leave the rest of Zoomigo usable.
 
-Both packages are currently private local packages, not assumed npm releases. Establish and verify reproducible pinned package delivery and static asset serving in Zoomigo CI. Account for a persistent WebSocket relay and one writer per room; do not assume a stateless deployment or multiple uncoordinated relay replicas will work. Document database write deadlines, unknown-outcome reconciliation, service restart behavior and a pilot disable/rollback procedure that preserves new v3 data. This is deployment rollback, not Canvas conversion.
+Install the versioned v0.1.1 GitHub Release tarballs using `docs/integration-packages.md`; the packages remain private to prevent accidental npm-registry publication. Verify pinned package delivery and static asset serving in Zoomigo CI. The avatar submodule is for development and source qualification, not a production dependency. Account for a persistent WebSocket relay and one writer per room; do not assume a stateless deployment or multiple uncoordinated relay replicas will work. Document database write deadlines, unknown-outcome reconciliation, service restart behavior and a pilot disable/rollback procedure that preserves new v3 data. This is deployment rollback, not Canvas conversion.
 
 Track implementation and acceptance evidence in the repositories. Test real separate authenticated users, cross-team/expired-access denial, same-user tab replacement, late join, simultaneous tool interactions, host closure/stall, reconnect, sprint release, room isolation, persisted layout after restart, lost edit acknowledgments, saved appearance validation and repeated route mount/unmount. Review all movement directions with held gear. Run package, unit and browser suites appropriate to the changes. Qualify the proposed full-room phone/network/load/cost budgets on named hardware; desktop CI and the existing 20-socket test do not establish mobile production readiness. State unmeasured targets explicitly.
 
@@ -1130,10 +1138,13 @@ Proceed in working increments, resolve ordinary design choices autonomously, and
       </footer>
     </main>
     <script>
-      const sourceBase =
-        "https://github.com/dafepro/zmap/blob/codex/reference-avatar-base/";
+      const sourceBase = "https://github.com/dafepro/zmap/blob/main/";
       document.querySelectorAll("[data-source]").forEach((a) => {
-        a.href = sourceBase + a.dataset.source;
+        const path = a.dataset.source;
+        a.href = path.startsWith("avatar-studio/")
+          ? "https://github.com/dafepro/zmap-avatar-studio/blob/main/" +
+            path.slice("avatar-studio/".length)
+          : sourceBase + path;
       });
       document
         .getElementById("copy-prompt")

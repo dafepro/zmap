@@ -78,7 +78,7 @@ These tests qualify the modular runtime. The separate Action Yard multiplayer
 journey verifies accepted emote/equipment clocks, peer presentation and handoff.
 No equipment entitlement or inventory policy is introduced here.
 
-The development-only [interactive review](http://localhost:5173/performance-review.html)
+The development-only [interactive review](http://localhost:5173/review/performances.html)
 runs the same canonical source and target assets, then replays the captured
 comparison. It is intentionally absent from the production build inputs.
 

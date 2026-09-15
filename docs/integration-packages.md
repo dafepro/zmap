@@ -1,0 +1,38 @@
+# Installable integration baseline: v0.1.1
+
+The packages remain private to prevent accidental npm-registry publication. They are delivered as built, versioned GitHub Release tarballs. A consuming app does not need the Blender sources, demo server, development submodule or repository build scripts.
+
+```sh
+npm install --save-exact \
+  https://github.com/dafepro/zmap/releases/download/v0.1.1/zmap-0.1.1.tgz \
+  https://github.com/dafepro/zmap-avatar-studio/releases/download/v0.1.1/zmap-avatar-studio-0.1.1.tgz
+```
+
+Commit the consuming lockfile. Release assets have SHA-256 manifests; npm records the tarball integrity in its lockfile. Use a single compatible Three.js installation. The packages are ESM with TypeScript declarations. `zmap/server` is Node-only; keep it out of the browser bundle. This version establishes a clean integration baseline, not production performance certification.
+
+## Static assets
+
+The avatar package exposes its assets through `@zmap/avatar-studio/assets/*`. Copy the approved catalog and required model/equipment folders at build time. For example, in a Node build script:
+
+```js
+import { cp, mkdir } from "node:fs/promises";
+const source = new URL(
+  "./",
+  import.meta.resolve("@zmap/avatar-studio/assets/catalog.json"),
+);
+const destination = new URL("./public/avatars/v0.1.1/", import.meta.url);
+await mkdir(destination, { recursive: true });
+for (const name of ["catalog.json", "models", "action", "wield"]) {
+  await cp(new URL(name, source), new URL(name, destination), {
+    recursive: true,
+  });
+}
+```
+
+Adjust destination to the app build root. Serve catalog and model hashes from the same immutable versioned base URL. Construct `AvatarLibrary` with that base. World map/scenery assets belong to the app's approved content; the example world props are in zmap's checked-in `examples/hub/public/models/` and their editable sources/provenance are retained separately. Do not assume the zmap engine package includes a complete lounge UI or map asset pack.
+
+## Maintaining a release
+
+Run the independent suites in each repository and the zmap integration suites at the exact avatar pin. Bump package versions and lockfiles together. `npm pack` builds declarations/runtime through `prepack`. Inspect `npm pack --dry-run`, install the generated tarballs into an empty consumer, then upload the tarballs and checksums to matching immutable version tags. Do not replace artifacts at an existing version. Record which avatar commit zmap tested.
+
+Clone from `main` for development; use release artifacts for reproducible integration. Source-based motion review fixtures are intentionally not a consumer API.

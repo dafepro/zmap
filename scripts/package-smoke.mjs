@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 const root = process.cwd();
@@ -16,7 +16,14 @@ try {
       type: "module",
     }),
   );
-  run("npm", ["install", join(dir, "zmap-0.1.0.tgz"), "--ignore-scripts"]);
+  run("npm", [
+    "install",
+    join(
+      dir,
+      `zmap-${JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version}.tgz`,
+    ),
+    "--ignore-scripts",
+  ]);
   const source = `
 import { Zoomap, findWalkPath, canWalkSegment, actionMovementLocked, WAKE_MOTION,
   cannonBehavior, cannonObject, objectPoint, spherePathClear, CANNON_LOADING_TICKS } from 'zmap';

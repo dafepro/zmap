@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zoomap performance review</title>
+    <style>
+      body {
+        margin: 0;
+        background: #eeeee5;
+        color: #21373c;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1024px;
+        margin: 24px auto;
+        padding: 0 18px;
+      }
+      button {
+        border: 0;
+        border-radius: 7px;
+        padding: 12px 18px;
+        background: #20373d;
+        color: white;
+        cursor: pointer;
+        font: inherit;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: wait;
+      }
+      canvas,
+      video {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: auto;
+      }
+      #status {
+        min-height: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Source motion → modular avatar</h1>
+      <p>
+        Original authored motion beside Zoomap at three body weights. The top
+        row shows the front; the bottom row shows the side. Includes five
+        emotes, one-hand gear, and all three shared tools.
+      </p>
+      <button id="run">Play the source comparison</button>
+      <p id="status">
+        Development review: this runs the same assets and pose checks as the
+        browser qualification.
+      </p>
+    </main>
+    <script type="module">
+      const button = document.querySelector("#run");
+      const status = document.querySelector("#status");
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        status.textContent =
+          "Loading source models and checking all 63 sequences…";
+        try {
+          const { capturePerformanceReview } =
+            await import("../../../tests/fixtures/performance-review.ts");
+          const result = await capturePerformanceReview({ record: true });
+          document
+            .querySelectorAll("canvas")
+            .forEach((canvas) => canvas.remove());
+          const video = document.createElement("video");
+          video.src = result.video;
+          video.controls = true;
+          video.loop = true;
+          video.autoplay = true;
+          video.muted = true;
+          document.body.append(video);
+          status.textContent = `${result.cases.length} sequences checked. Original GLB source is the left column; target weights −1, 0, +1 follow.`;
+          await video.play();
+        } catch (error) {
+          status.textContent = String(error);
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
