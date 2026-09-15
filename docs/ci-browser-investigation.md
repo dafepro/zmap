@@ -23,3 +23,22 @@ The workflow now retains `world-browser-evidence` (Playwright traces/error conte
 ## Independent avatar CI repeatability
 
 At the same avatar commit `7361debfa55a70762ca64b4fc1b694f031d5ad3d`, [main run 35031750380](https://github.com/dafepro/zmap-avatar-studio/actions/runs/35031750380) passed all checks, but [tag run 35031926151](https://github.com/dafepro/zmap-avatar-studio/actions/runs/35031926151) passed 42 browser tests and failed two with 45-second timeouts. `performance-controls.spec.ts` attempted to click a disabled Stop expression button after taking a screenshot; investigate whether the finite expression had already completed before the click. `studio.spec.ts` exhausted its test budget while checking a primary-color change. Neither cause is proven. Resolve these in the avatar repository and verify repeatability; a single green run is insufficient evidence of stable CI. Local validation passed all 44 cases.
+
+## September 15 preintegration follow-up
+
+The controlled `Entry diagnostics` workflow compares the same two-/three-client
+cases with trace screenshots enabled and disabled. Both configurations reproduced
+host eligibility withdrawal, so trace screenshots alone are not the cause.
+
+A concrete relay bug was fixed: repeated ineligible heartbeats while the host was
+already null incremented the epoch and broadcast full room resets. The new real
+socket regression observed seven metadata messages where two were sufficient;
+with the fix, hostless heartbeats leave the epoch/state alone, and eligibility
+recovery creates exactly one new epoch. Linux diagnostics reduced the room-reset
+storm, but still show both software-rendered clients withdrawing eligibility and
+movement tests failing. This fix does **not** close Linux graphics qualification.
+
+Preintegration validation passed 111 world unit/socket tests and five focused
+Chromium browser cases locally, including the three-client actions journey. The
+v0.1.2 integration prerelease also retains original private authentication context
+for continuing `canAccess` checks, independently of the public roster projection.
