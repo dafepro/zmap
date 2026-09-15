@@ -4,7 +4,7 @@
       "id": "courtyard-cannon",
       "phase": "fusing",
       "progress": 0.4166666666666667,
-      "displayedTick": 171,
+      "displayedTick": 170,
       "lastFire": null,
       "fireAge": null,
       "recoil": 0.005,
@@ -13,14 +13,14 @@
       "smoke": 0,
       "trail": 0
     },
-    "tick": 171
+    "tick": 170
   },
   "fire": {
     "diagnostics": {
       "id": "courtyard-cannon",
       "phase": "fired",
       "progress": 0,
-      "displayedTick": 185,
+      "displayedTick": 184,
       "lastFire": 2,
       "fireAge": 0,
       "recoil": -0.22,
@@ -29,14 +29,14 @@
       "smoke": 16,
       "trail": 1
     },
-    "tick": 185
+    "tick": 184
   },
   "burst": {
     "diagnostics": {
       "id": "courtyard-cannon",
       "phase": "fired",
       "progress": 0,
-      "displayedTick": 189,
+      "displayedTick": 188,
       "lastFire": 2,
       "fireAge": 0.13333333333333333,
       "recoil": -0.06840582983546806,
@@ -45,6 +45,6 @@
       "smoke": 16,
       "trail": 5
     },
-    "tick": 189
+    "tick": 188
   }
 }

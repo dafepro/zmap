@@ -1,5 +1,6 @@
 import { rollingMotion } from "./presentation.js";
 import * as THREE from "three";
+import { presentationTickFor } from "./presentation.js";
 import {
   top,
   type Body,
@@ -18,6 +19,8 @@ export type Character = {
     context?: {
       session: string;
       state: Simulation;
+      /** Fractional display time between accepted checkpoints; never extrapolated. */
+      presentationTick?: number;
       reducedMotion: boolean;
       viewport: THREE.Vector2;
     },
@@ -34,6 +37,7 @@ export type VisualOptions = {
    * Time is seconds; simulation tick is the authority for timed object effects. */
   frame?: (context: {
     state: Simulation;
+    presentationTick?: number;
     time: number;
     reducedMotion: boolean;
     viewport: THREE.Vector2;
@@ -245,6 +249,7 @@ export class WorldView {
       c.update(b, reducedMotion ? 0 : time / 1000, {
         session: p.session,
         state,
+        presentationTick: presentationTickFor(state),
         reducedMotion,
         viewport: this.renderer.getDrawingBufferSize(this.viewport),
       });
@@ -313,6 +318,7 @@ export class WorldView {
     }
     this.visuals.frame?.({
       state,
+      presentationTick: presentationTickFor(state),
       time: time / 1000,
       reducedMotion,
       viewport: this.renderer.getDrawingBufferSize(this.viewport),

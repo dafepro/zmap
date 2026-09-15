@@ -61,6 +61,7 @@
     "docs/field-tools.md",
     "docs/navigation.md",
     "docs/physics.md",
-    "docs/world-objects.md"
+    "docs/world-objects.md",
+    "docs/shared-performances.md"
   ]
 }

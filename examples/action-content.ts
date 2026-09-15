@@ -1,4 +1,8 @@
 import { cannonObject, playfulActionCatalog, type WorldMap } from "zmap";
+import {
+  emoteDescriptors,
+  WIELD_TRANSITION_SECONDS,
+} from "@zmap/avatar-studio";
 
 /** This app supplies the room, approved tools, balls and installed world objects. */
 export const actionYard: WorldMap = {
@@ -81,7 +85,17 @@ export const actionYard: WorldMap = {
   triggers: [],
   placementZones: [],
   protectedZones: [],
-  actionCatalog: playfulActionCatalog(),
+  actionCatalog: {
+    ...playfulActionCatalog(),
+    performance: {
+      emotes: emoteDescriptors.map(({ id, duration }) => ({
+        id,
+        durationTicks: Math.ceil(duration * 30),
+      })),
+      drawTicks: Math.ceil(WIELD_TRANSITION_SECONDS.twoHand * 30),
+      stowTicks: Math.ceil(WIELD_TRANSITION_SECONDS.twoHand * 30),
+    },
+  },
   objects: [
     cannonObject("courtyard-cannon", { x: 6, y: 0, z: -4 }, 0, [
       "cannon-ball",

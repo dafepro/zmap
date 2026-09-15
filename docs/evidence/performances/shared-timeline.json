@@ -1,0 +1,201 @@
+{
+  "beforeLoss": {
+    "tick": 326,
+    "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+    "host": "618f99cc-9bd0-4673-a807-a2c8bdc3a093",
+    "body": {
+      "x": 0.06899444175183941,
+      "y": 0,
+      "z": -5.06899444175184,
+      "vx": 0,
+      "vy": 0,
+      "vz": 0,
+      "facing": 2.356194490192345,
+      "gesture": 0
+    },
+    "action": {
+      "tool": "rebound-panel",
+      "phase": "idle",
+      "held": false,
+      "aim": {
+        "x": 0.7071067811865476,
+        "z": -0.7071067811865475
+      },
+      "aimManual": false,
+      "cooldownUntil": 0,
+      "cooldowns": {
+        "tether-winch": 0,
+        "rebound-panel": 0,
+        "wake-driver": 0
+      },
+      "phaseStarted": 274,
+      "phaseUntil": 274,
+      "lastHeldTick": 0,
+      "target": null,
+      "sequence": 6,
+      "impulse": {
+        "x": 0,
+        "z": 0
+      },
+      "immuneUntil": 0,
+      "performance": {
+        "drawn": false,
+        "equipmentStarted": 274,
+        "equipmentUntil": 304,
+        "equipmentFrom": 1,
+        "emote": {
+          "id": "dance",
+          "startedTick": 304,
+          "untilTick": 394,
+          "redraw": true
+        }
+      }
+    },
+    "rendered": {
+      "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+      "desired": "rebound-panel",
+      "ready": true,
+      "pending": false,
+      "error": null,
+      "drawn": false,
+      "emote": {
+        "id": "dance",
+        "elapsed": 0.7213333333333328,
+        "weight": 1,
+        "waiting": false
+      }
+    }
+  },
+  "accepted": {
+    "id": "dance",
+    "startedTick": 304,
+    "untilTick": 394,
+    "redraw": true
+  },
+  "recovered": {
+    "tick": 324,
+    "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+    "host": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+    "body": {
+      "x": 0.06899444175183941,
+      "y": 0,
+      "z": -5.06899444175184,
+      "vx": 0,
+      "vy": 0,
+      "vz": 0,
+      "facing": 2.356194490192345,
+      "gesture": 0
+    },
+    "action": {
+      "tool": "rebound-panel",
+      "phase": "idle",
+      "held": false,
+      "aim": {
+        "x": 0.7071067811865476,
+        "z": -0.7071067811865475
+      },
+      "aimManual": false,
+      "cooldownUntil": 0,
+      "cooldowns": {
+        "tether-winch": 0,
+        "rebound-panel": 0,
+        "wake-driver": 0
+      },
+      "phaseStarted": 274,
+      "phaseUntil": 274,
+      "lastHeldTick": 0,
+      "target": null,
+      "sequence": 6,
+      "impulse": {
+        "x": 0,
+        "z": 0
+      },
+      "immuneUntil": 0,
+      "performance": {
+        "drawn": false,
+        "equipmentStarted": 274,
+        "equipmentUntil": 304,
+        "equipmentFrom": 1,
+        "emote": {
+          "id": "dance",
+          "startedTick": 304,
+          "untilTick": 394,
+          "redraw": true
+        }
+      }
+    },
+    "rendered": {
+      "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+      "desired": "rebound-panel",
+      "ready": true,
+      "pending": false,
+      "error": null,
+      "drawn": false,
+      "emote": {
+        "id": "dance",
+        "elapsed": 0.6666666666666666,
+        "weight": 1,
+        "waiting": false
+      }
+    }
+  },
+  "recoveryMs": 129,
+  "final": {
+    "tick": 364,
+    "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+    "host": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+    "body": {
+      "x": 0.35419417683041365,
+      "y": 0,
+      "z": -5.354194176830417,
+      "vx": 0,
+      "vy": 0,
+      "vz": 0,
+      "facing": 2.356194490192345,
+      "gesture": 0
+    },
+    "action": {
+      "tool": "rebound-panel",
+      "phase": "idle",
+      "held": false,
+      "aim": {
+        "x": 0.7071067811865476,
+        "z": -0.7071067811865475
+      },
+      "aimManual": false,
+      "cooldownUntil": 0,
+      "cooldowns": {
+        "tether-winch": 0,
+        "rebound-panel": 0,
+        "wake-driver": 0
+      },
+      "phaseStarted": 274,
+      "phaseUntil": 274,
+      "lastHeldTick": 0,
+      "target": null,
+      "sequence": 6,
+      "impulse": {
+        "x": 0,
+        "z": 0
+      },
+      "immuneUntil": 0,
+      "performance": {
+        "drawn": true,
+        "equipmentStarted": 326,
+        "equipmentUntil": 356,
+        "equipmentFrom": 0,
+        "emote": null
+      }
+    },
+    "rendered": {
+      "session": "dfc353dc-896c-4df3-9f9e-a31540d4c2d3",
+      "desired": "rebound-panel",
+      "ready": true,
+      "pending": false,
+      "error": null,
+      "drawn": true
+    }
+  },
+  "shapedTraffic": "75 ms ±15 ms each way; every 50th snapshot omitted",
+  "errors": []
+}

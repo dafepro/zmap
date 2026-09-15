@@ -9,6 +9,17 @@ import {
   type Vec3,
   type WorldMap,
 } from "./core.js";
+import {
+  validatePerformanceCatalog,
+  initialPerformance,
+  setPerformanceDrawn,
+  cancelPerformance,
+  startPerformance,
+  performanceUsable,
+  validPerformanceState,
+  type WorldPerformanceCatalog,
+  type PlayerPerformance,
+} from "./world-performance.js";
 
 /** Presentation assets use `wield-${id}`; physics never reads meshes or rig anchors. */
 export const TOOL_IDS = [
@@ -25,12 +36,15 @@ export type WorldActionCatalog = {
     strength: number;
     cooldownTicks: number;
   }[];
+  performance?: WorldPerformanceCatalog;
 };
 export type ActionIntent = { sequence: number } & (
   | { kind: "equip"; tool: ToolId | null }
   | { kind: "use"; pressed: boolean }
   | { kind: "cancel" }
   | { kind: "aim"; x: number; z: number }
+  | { kind: "emote"; emote: string | null }
+  | { kind: "draw"; drawn: boolean }
 );
 export type ActionCommand = {
   sequence: number;
@@ -93,6 +107,7 @@ export type PlayerActionState = {
   sequence: number;
   impulse: { x: number; z: number };
   immuneUntil: number;
+  performance?: PlayerPerformance;
 };
 export type WorldActionEvent = {
   id: number;
@@ -142,13 +157,18 @@ export function validateActionCatalog(
 ): asserts value is WorldActionCatalog {
   const c = value as WorldActionCatalog;
   if (
-    !exact(c, ["version", "tools"]) ||
+    !exact(c, [
+      "version",
+      "tools",
+      ...(c?.performance === undefined ? [] : ["performance"]),
+    ]) ||
     c.version !== 1 ||
     !Array.isArray(c.tools) ||
-    !c.tools.length ||
+    (!c.tools.length && !c.performance?.emotes.length) ||
     c.tools.length > 3
   )
     throw Error("Invalid action catalog");
+  if (c.performance !== undefined) validatePerformanceCatalog(c.performance);
   const seen = new Set<string>();
   for (const tool of c.tools) {
     if (
@@ -181,6 +201,21 @@ export function validateActionIntent(
   )
     return;
   if (v.kind === "cancel" && exact(v, ["sequence", "kind"])) return;
+  if (
+    catalog.performance &&
+    v.kind === "emote" &&
+    exact(v, ["sequence", "kind", "emote"]) &&
+    (v.emote === null ||
+      catalog.performance.emotes.some((e) => e.id === v.emote))
+  )
+    return;
+  if (
+    catalog.performance &&
+    v.kind === "draw" &&
+    exact(v, ["sequence", "kind", "drawn"]) &&
+    typeof v.drawn === "boolean"
+  )
+    return;
   if (
     v.kind === "use" &&
     exact(v, ["sequence", "kind", "pressed"]) &&
@@ -224,13 +259,19 @@ function playerState(body: Body): PlayerActionState {
     immuneUntil: 0,
   };
 }
-export function syncActionPlayers(state: Simulation) {
+export function syncActionPlayers(
+  state: Simulation,
+  performance?: WorldPerformanceCatalog,
+) {
   if (!state.actions) return;
   for (const session of Object.keys(state.actions.players))
     if (!Object.hasOwn(state.players, session))
       delete state.actions.players[session];
-  for (const session of Object.keys(state.players).sort())
+  for (const session of Object.keys(state.players).sort()) {
     state.actions.players[session] ??= playerState(state.players[session]);
+    if (performance)
+      state.actions.players[session].performance ??= initialPerformance();
+  }
   state.actions.events = state.actions.events.filter((event) =>
     Object.hasOwn(state.players, event.session),
   );
@@ -362,7 +403,7 @@ export function stepActions(
   catalog: ItemType[] = [],
 ) {
   if (!map.actionCatalog || !state.actions) return;
-  syncActionPlayers(state);
+  syncActionPlayers(state, map.actionCatalog.performance);
   const a = state.actions;
   const origin = (b: Body): Vec3 => ({ x: b.x, y: b.y + 0.7, z: b.z });
   const visible = (b: Body, to: Vec3) =>
@@ -377,10 +418,51 @@ export function stepActions(
     validateActionIntent(intent, map.actionCatalog);
     if (intent.sequence <= p.sequence) continue;
     p.sequence = intent.sequence;
+    const performance = p.performance,
+      config = map.actionCatalog.performance;
+    if (intent.kind === "emote") {
+      if (performance && config && !actionMovementLocked(p)) {
+        cancel(state, command.session);
+        if (intent.emote === null)
+          cancelPerformance(performance, !!p.tool, state.tick, config);
+        else
+          startPerformance(
+            performance,
+            intent.emote,
+            !!p.tool,
+            state.tick,
+            config,
+          );
+      }
+      continue;
+    }
+    if (intent.kind === "draw") {
+      if (performance && config && !actionMovementLocked(p)) {
+        cancel(state, command.session);
+        performance.emote = null;
+        setPerformanceDrawn(
+          performance,
+          !!p.tool && intent.drawn,
+          state.tick,
+          config,
+        );
+      }
+      continue;
+    }
     if (intent.kind === "equip") {
       if (p.tool !== intent.tool) {
         cancel(state, command.session);
         p.tool = intent.tool;
+        if (performance && config) {
+          performance.emote = null;
+          // New complete loadout starts at its retained stow target, then draws.
+          performance.drawn = false;
+          performance.equipmentFrom = 0;
+          performance.equipmentStarted = performance.equipmentUntil =
+            state.tick;
+          if (p.tool)
+            setPerformanceDrawn(performance, true, state.tick, config);
+        }
         p.cooldownUntil = p.tool ? p.cooldowns[p.tool] : 0;
         transition(
           p,
@@ -397,9 +479,14 @@ export function stepActions(
     }
     if (intent.kind === "cancel") {
       cancel(state, command.session);
+      if (performance && config)
+        cancelPerformance(performance, !!p.tool, state.tick, config);
       continue;
     }
     if (!p.tool) continue;
+    if (performance && config && intent.pressed)
+      cancelPerformance(performance, true, state.tick, config);
+    if (!performanceUsable(performance, state.tick)) continue;
     const tool = map.actionCatalog.tools.find((t) => t.id === p.tool)!;
     if (!intent.pressed) {
       if (p.held && p.target && p.tool === "tether-winch") {
@@ -470,6 +557,22 @@ export function stepActions(
   for (const session of Object.keys(a.players).sort()) {
     const p = a.players[session],
       body = state.players[session];
+    if (p.performance && map.actionCatalog.performance) {
+      const moving =
+        Math.hypot(inputs[session]?.x ?? 0, inputs[session]?.z ?? 0) > 0.01;
+      if (
+        p.performance.emote &&
+        (moving ||
+          inputs[session]?.kick ||
+          state.tick >= p.performance.emote.untilTick)
+      )
+        cancelPerformance(
+          p.performance,
+          !!p.tool,
+          state.tick,
+          map.actionCatalog.performance,
+        );
+    }
     p.impulse.x *= Math.exp(-5 * DT);
     p.impulse.z *= Math.exp(-5 * DT);
     if (
@@ -718,6 +821,7 @@ export function validActionState(
         "sequence",
         "impulse",
         "immuneUntil",
+        ...(map.actionCatalog.performance ? ["performance"] : []),
       ]) ||
       (p.tool !== null &&
         !map.actionCatalog.tools.some((t) => t.id === p.tool)) ||
@@ -753,6 +857,12 @@ export function validActionState(
       !tick(p.lastHeldTick) ||
       p.lastHeldTick > currentTick ||
       !tick(p.sequence) ||
+      !validPerformanceState(
+        p.performance,
+        map.actionCatalog.performance,
+        !!p.tool,
+        currentTick,
+      ) ||
       (p.target !== null && !map.toys.some((t) => t.id === p.target))
     )
       return false;
@@ -761,7 +871,10 @@ export function validActionState(
         (p.held || p.target || !["idle", "cooldown"].includes(p.phase))) ||
       (p.phase === "reeling" && (p.tool !== "tether-winch" || !p.target)) ||
       (p.phase === "braced" && p.tool !== "rebound-panel") ||
-      (actionMovementLocked(p) && p.tool !== "wake-driver")
+      (actionMovementLocked(p) && p.tool !== "wake-driver") ||
+      (p.performance &&
+        !performanceUsable(p.performance, currentTick) &&
+        (p.held || p.target || !["idle", "cooldown"].includes(p.phase)))
     )
       return false;
   }

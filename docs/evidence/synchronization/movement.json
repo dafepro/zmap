@@ -4,19 +4,19 @@
     {
       "frames": 56,
       "movingFraction": 1,
-      "maximumStep": 0.03696000000000085,
-      "minimumForwardStep": 0.03630000000000038
+      "maximumStep": 0.03696000000000038,
+      "minimumForwardStep": 0.03651999999999918
     },
     {
       "frames": 55,
       "movingFraction": 1,
-      "maximumStep": 0.04592098302718143,
-      "minimumForwardStep": 0.023274973314572074
+      "maximumStep": 0.04250471951820344,
+      "minimumForwardStep": 0.023422910592874973
     }
   ],
   "initial": {
-    "session": "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad",
-    "host": "1ad69918-c24f-4238-a8ec-6469cf4f5f80",
+    "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
+    "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
     "epoch": 1,
     "tick": 2,
     "local": {
@@ -30,7 +30,7 @@
       "gesture": 0
     },
     "players": {
-      "1ad69918-c24f-4238-a8ec-6469cf4f5f80": {
+      "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -40,7 +40,7 @@
         "facing": 0,
         "gesture": 0
       },
-      "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad": {
+      "4998b58e-9148-4fa8-bc95-4afa72be208e": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -54,10 +54,10 @@
   },
   "settled": [
     {
-      "session": "1ad69918-c24f-4238-a8ec-6469cf4f5f80",
-      "host": "1ad69918-c24f-4238-a8ec-6469cf4f5f80",
+      "session": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
+      "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
       "epoch": 1,
-      "tick": 99,
+      "tick": 100,
       "local": {
         "x": -2,
         "y": 0,
@@ -69,7 +69,7 @@
         "gesture": 0
       },
       "players": {
-        "1ad69918-c24f-4238-a8ec-6469cf4f5f80": {
+        "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -79,10 +79,10 @@
           "facing": 0,
           "gesture": 0
         },
-        "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad": {
-          "x": 0.3334523779156058,
+        "4998b58e-9148-4fa8-bc95-4afa72be208e": {
+          "x": 0.38530687520261925,
           "y": 0,
-          "z": -5.333452377915615,
+          "z": -5.3853068752026285,
           "vx": 0,
           "vy": 0,
           "vz": 0,
@@ -92,14 +92,14 @@
       }
     },
     {
-      "session": "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad",
-      "host": "1ad69918-c24f-4238-a8ec-6469cf4f5f80",
+      "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
+      "host": "d2f89f6f-935c-4818-ab2c-b954dacac16f",
       "epoch": 1,
       "tick": 94,
       "local": {
-        "x": 0.3334523779156058,
+        "x": 0.38530687520261925,
         "y": 0,
-        "z": -5.333452377915615,
+        "z": -5.3853068752026285,
         "vx": 0,
         "vy": 0,
         "vz": 0,
@@ -107,7 +107,7 @@
         "gesture": 0
       },
       "players": {
-        "1ad69918-c24f-4238-a8ec-6469cf4f5f80": {
+        "d2f89f6f-935c-4818-ab2c-b954dacac16f": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -117,10 +117,10 @@
           "facing": 0,
           "gesture": 0
         },
-        "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad": {
-          "x": 0.3334523779156058,
+        "4998b58e-9148-4fa8-bc95-4afa72be208e": {
+          "x": 0.38530687520261925,
           "y": 0,
-          "z": -5.333452377915615,
+          "z": -5.3853068752026285,
           "vx": 0,
           "vy": 0,
           "vz": 0,
@@ -131,10 +131,10 @@
     }
   ],
   "final": {
-    "session": "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad",
-    "host": "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad",
+    "session": "4998b58e-9148-4fa8-bc95-4afa72be208e",
+    "host": "4998b58e-9148-4fa8-bc95-4afa72be208e",
     "epoch": 2,
-    "tick": 224,
+    "tick": 226,
     "local": {
       "x": -1.2221825406947988,
       "y": 0,
@@ -146,7 +146,7 @@
       "gesture": 0
     },
     "players": {
-      "4b41f3d8-51cb-4c70-8bb0-d2ce7379efad": {
+      "4998b58e-9148-4fa8-bc95-4afa72be208e": {
         "x": -1.2221825406947988,
         "y": 0,
         "z": -3.777817459305201,

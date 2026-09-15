@@ -1,24 +1,24 @@
 {
   "provenance": "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
-  "recoveryMs": 137,
+  "recoveryMs": 119,
   "pass": [
     {
       "kind": "reel",
-      "session": "ec813216-cdeb-4b87-af9d-e0f0e9df3d30"
+      "session": "977b1a4b-c37a-4aa2-be26-d623a88fa75b"
     },
     {
       "kind": "pitch",
-      "session": "ec813216-cdeb-4b87-af9d-e0f0e9df3d30"
+      "session": "977b1a4b-c37a-4aa2-be26-d623a88fa75b"
     },
     {
       "kind": "rebound",
-      "session": "46ef13f0-0f3e-4558-b3d7-52ac4f415c05"
+      "session": "e80f4ceb-aa06-4279-9738-7a1f21da912f"
     }
   ],
   "pulse": {
     "id": 5,
-    "tick": 383,
-    "session": "ec813216-cdeb-4b87-af9d-e0f0e9df3d30",
+    "tick": 518,
+    "session": "977b1a4b-c37a-4aa2-be26-d623a88fa75b",
     "tool": "wake-driver",
     "kind": "pulse",
     "position": {
@@ -27,21 +27,21 @@
       "z": -2.4
     }
   },
-  "bytes": 1653,
+  "bytes": 1899,
   "state": {
-    "tick": 431,
+    "tick": 567,
     "players": {
-      "46ef13f0-0f3e-4558-b3d7-52ac4f415c05": {
-        "x": -1.9962322842470877,
+      "e80f4ceb-aa06-4279-9738-7a1f21da912f": {
+        "x": -1.9933782147917798,
         "y": 0,
-        "z": -0.23625530735310316,
-        "vx": 0.0000023365527657311163,
+        "z": -0.19267635933806926,
+        "vx": 0.0000034074449090247973,
         "vy": 0,
-        "vz": 0.001341848477298883,
-        "facing": -3.1222796941722395,
+        "vz": 0.0011358468246005081,
+        "facing": -3.1159707898383986,
         "gesture": 0
       },
-      "06bc3aa2-bbaf-4542-aa37-55063631e3a2": {
+      "0e1f6b47-00c5-467d-8c4e-87ffdcee7133": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -64,12 +64,12 @@
         "gesture": 0
       },
       "ball": {
-        "x": -2,
+        "x": -2.5705496973999438,
         "y": 0,
-        "z": 6.454919134724021,
-        "vx": 0,
+        "z": -6.741194597611135,
+        "vx": -0.04857717619707038,
         "vy": 0,
-        "vz": 3.235396450347694,
+        "vz": -0.4933216276469666,
         "facing": 0,
         "gesture": 0
       },
@@ -100,7 +100,7 @@
       "appliedSequence": 19,
       "eventSequence": 5,
       "players": {
-        "46ef13f0-0f3e-4558-b3d7-52ac4f415c05": {
+        "e80f4ceb-aa06-4279-9738-7a1f21da912f": {
           "tool": "rebound-panel",
           "phase": "idle",
           "held": false,
@@ -115,18 +115,25 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
-          "phaseStarted": 267,
-          "phaseUntil": 267,
-          "lastHeldTick": 265,
+          "phaseStarted": 364,
+          "phaseUntil": 364,
+          "lastHeldTick": 363,
           "target": null,
           "sequence": 9,
           "impulse": {
-            "x": 0.0000023365527657311163,
-            "z": 0.001341848477298883
+            "x": 0.0000034074449090247973,
+            "z": 0.0011358468246005081
           },
-          "immuneUntil": 413
+          "immuneUntil": 548,
+          "performance": {
+            "drawn": true,
+            "equipmentStarted": 186,
+            "equipmentUntil": 216,
+            "equipmentFrom": 0,
+            "emote": null
+          }
         },
-        "06bc3aa2-bbaf-4542-aa37-55063631e3a2": {
+        "0e1f6b47-00c5-467d-8c4e-87ffdcee7133": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -150,7 +157,14 @@
             "x": 0,
             "z": 0
           },
-          "immuneUntil": 0
+          "immuneUntil": 0,
+          "performance": {
+            "drawn": false,
+            "equipmentStarted": 0,
+            "equipmentUntil": 0,
+            "equipmentFrom": 0,
+            "emote": null
+          }
         }
       },
       "events": []
@@ -170,18 +184,20 @@
     "characters": 2,
     "readiness": [
       {
-        "session": "46ef13f0-0f3e-4558-b3d7-52ac4f415c05",
+        "session": "e80f4ceb-aa06-4279-9738-7a1f21da912f",
         "desired": "rebound-panel",
         "ready": true,
         "pending": false,
-        "error": null
+        "error": null,
+        "drawn": true
       },
       {
-        "session": "06bc3aa2-bbaf-4542-aa37-55063631e3a2",
+        "session": "0e1f6b47-00c5-467d-8c4e-87ffdcee7133",
         "desired": null,
         "ready": true,
         "pending": false,
-        "error": null
+        "error": null,
+        "drawn": true
       }
     ],
     "pending": 0,
@@ -191,11 +207,21 @@
         "visible": true,
         "appearanceTriangles": 11262,
         "heldTriangles": 1682,
-        "visibleTriangles": 8523,
+        "visibleTriangles": 8403,
         "effectTriangles": 120,
         "replacedTriangles": 2239,
         "heldBytes": 127412,
-        "equippedHands": 2
+        "equippedHands": 2,
+        "presentation": {
+          "left": {
+            "phase": "drawn",
+            "progress": 1
+          },
+          "right": {
+            "phase": "drawn",
+            "progress": 1
+          }
+        }
       },
       {
         "state": "ready",
@@ -206,12 +232,13 @@
         "effectTriangles": 0,
         "replacedTriangles": 0,
         "heldBytes": 0,
-        "equippedHands": 0
+        "equippedHands": 0,
+        "presentation": {}
       }
     ]
   },
   "traffic": {
-    "incoming": 387473,
-    "outgoing": 57310
+    "incoming": 557111,
+    "outgoing": 72739
   }
 }

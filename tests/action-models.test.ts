@@ -173,6 +173,8 @@ test("visual readiness rejects a failed accepted tool, explicit retry preserves 
       ready: false,
       pending: false,
       error: "simulated verified load failure",
+      drawn: false,
+      emote: undefined,
     });
     assert.equal(errors.length, 1);
     failPanel = false;

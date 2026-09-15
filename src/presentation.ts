@@ -1,4 +1,9 @@
 import type { Body, Simulation, Vec3 } from "./core.js";
+// Display clocks belong to derived frames, never to serialized simulation state.
+// Weak ownership lets frames retire without retaining history or adding wire fields.
+const displayTicks = new WeakMap<Simulation, number>();
+export const presentationTickFor = (state: Simulation) =>
+  displayTicks.get(state) ?? state.tick;
 export function rollingMotion(previous: Vec3, next: Vec3, radius: number) {
   const dx = next.x - previous.x,
     dz = next.z - previous.z,
@@ -48,7 +53,7 @@ export function interpolateSimulation(
         left[id] ? interpolateBody(left[id], body, alpha) : { ...body },
       ]),
     );
-  return {
+  const frame: Simulation = {
     tick: a.tick,
     players: bodies(a.players, b.players),
     toys: bodies(a.toys, b.toys),
@@ -56,6 +61,8 @@ export function interpolateSimulation(
     ...(a.actions ? { actions: structuredClone(a.actions) } : {}),
     ...(a.objects ? { objects: structuredClone(a.objects) } : {}),
   };
+  displayTicks.set(frame, a.tick + (b.tick - a.tick) * alpha);
+  return frame;
 }
 /** Bounded display-only interpolation. Never feed delayed poses back into simulation or durable writes. */
 export class SnapshotPresentation {

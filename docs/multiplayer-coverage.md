@@ -58,3 +58,7 @@ during asynchronous asset loading and entry failure after movement controls exis
 Render captures inspect the real asset during fuse, initial recoil and the later
 puff burst. [The asset workflow](cannon-workflow.md) also validates the actual
 export's independent mechanical anchors and interior ball clearance.
+
+## Shared expressions and equipment timelines
+
+Approved emotes and draw/stow presentation use the existing sequenced action relay and an opt-in `performance-v1` capability. Real sockets verify performer identity, exact configured durations, forged state rejection, late join and host loss. Core tests also cover partial reversal, cancellation and a 20-performer, 120-second bounded-state sample. Fractional display time advances only between accepted checkpoints, so smooth playback does not invent shared progress during host stalls. The [shared performance guide](shared-performances.md) identifies the browser journey and raw evidence. The physical-phone/full-room and transport-percentile qualifications above remain outstanding.

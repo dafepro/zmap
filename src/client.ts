@@ -175,8 +175,7 @@ export class Zoomap {
           if (!this.disabled) {
             this.keys.add(e.key.toLowerCase());
             if (e.key === " " && !e.repeat) this.input.kick = true;
-            if (e.key.toLowerCase() === "e" && !e.repeat)
-              this.input.wave = true;
+            if (e.key.toLowerCase() === "e" && !e.repeat) this.action("wave");
           }
         }
       },
@@ -273,6 +272,9 @@ export class Zoomap {
             "input-ack-v1",
             "sprint-v1",
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
+            ...(this.options.map.actionCatalog?.performance
+              ? ["performance-v1"]
+              : []),
             ...(this.options.map.objects ? ["world-objects-v1"] : []),
           ],
           room: this.address!.room,
@@ -293,15 +295,17 @@ export class Zoomap {
             !Array.isArray(m.capabilities) ||
             !m.capabilities.includes("input-ack-v1") ||
             !m.capabilities.includes("sprint-v1") ||
+            (this.options.map.actionCatalog?.performance &&
+              !m.capabilities.includes("performance-v1")) ||
             (this.options.map.objects &&
               !m.capabilities.includes("world-objects-v1"))
           ) {
             this.stopped = true;
             this.setStatus(
               "failed",
-              "Room service needs the required input, sprint, or world-object protocol update",
+              "Room service needs the required movement, world-object, or expression and equipment protocol update",
             );
-            ws.close(4400, "Input acknowledgement protocol required");
+            ws.close(4400, "Required room capabilities missing");
             return;
           }
           this.session = m.session;
@@ -594,14 +598,37 @@ export class Zoomap {
     }
   }
   action(action: "kick" | "wave") {
+    if (
+      action === "wave" &&
+      this.options.map.actionCatalog?.performance?.emotes.some(
+        (e) => e.id === "wave",
+      )
+    ) {
+      if (!this.disabled && this.status === "ready") this.emote("wave");
+      return;
+    }
     if (!this.disabled && this.status === "ready") this.input[action] = true;
+  }
+  /** Play an app-approved bounded emote, or cancel and restore held equipment. */
+  emote(emote: string | null) {
+    this.submitAction({
+      sequence: ++this.actionSequence,
+      kind: "emote",
+      emote,
+    });
+    this.toolPressed = false;
+  }
+  /** Retain the selected tool while drawing or stowing its presentation. */
+  setToolDrawn(drawn: boolean) {
+    this.submitAction({ sequence: ++this.actionSequence, kind: "draw", drawn });
+    this.toolPressed = false;
   }
   private submitAction(intent: ActionIntent) {
     const catalog = this.options.map.actionCatalog;
-    if (!catalog) throw Error("This map has no shared tools");
+    if (!catalog) throw Error("This map has no shared actions");
     validateActionIntent(intent, catalog);
     if (this.status !== "ready" || this.socket?.readyState !== WebSocket.OPEN)
-      throw Error("Reconnect before using shared tools");
+      throw Error("Reconnect before using shared actions");
     this.send({ type: "action", epoch: this.epoch, intent });
   }
   equipTool(tool: ToolId | null) {

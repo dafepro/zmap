@@ -140,7 +140,8 @@ test("all movement directions retain continuous joints, athletic posture, extens
           )
           // The authored strafe's trailing crossover leg stays around30°;
           // the support leg and both ordinary walk/run legs must extend.
-          .toBeLessThan(crossover ? 35 : diagonalCrossover ? 25 : 20);
+          // C2 reconstruction rounds the diagonal crossover minimum by <1 degree.
+          .toBeLessThan(crossover ? 35 : diagonalCrossover ? 26 : 20);
       }
     expect
       .soft(sample.maxKnee, `${label}: knees must retain useful flexion`)

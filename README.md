@@ -83,4 +83,4 @@ The hub consumes the same package through approved prepared factories in `exampl
 
 See [multiplayer coverage](docs/multiplayer-coverage.md) for the tested functional boundaries, impaired-network method and the remaining full-room/device performance qualification.
 
-The [Action Yard](http://localhost:5173/action.html) demonstrates shared two-handed field tools, click/tap paths, an explicit joystick, colliding balls and accepted jump/strike/recoil motion. See [field actions](docs/field-tools.md), [navigation](docs/navigation.md), and [multiplayer test boundaries](docs/multiplayer-coverage.md).
+The [Action Yard](http://localhost:5173/action.html) demonstrates shared two-handed field tools, click/tap paths, an explicit joystick, colliding balls and accepted jump/strike/recoil motion. It also demonstrates shared wave, cheer, dance, yes/no expressions and reversible equipment draw/stow. See [shared expressions](docs/shared-performances.md), [field actions](docs/field-tools.md), [navigation](docs/navigation.md), and [multiplayer test boundaries](docs/multiplayer-coverage.md).

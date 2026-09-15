@@ -8,6 +8,7 @@ import {
   emptyWieldLoadout,
   fieldToolBehaviors,
   disposeAvatarResources,
+  isEmoteId,
   type AvatarInstance,
   type Motion,
 } from "@zmap/avatar-studio";
@@ -27,7 +28,9 @@ export function fieldCharacterMotion(
   action: PlayerActionState | undefined,
   tick: number,
   reducedMotion = false,
-  facing = action?.tool ? Math.atan2(action.aim.x, action.aim.z) : body.facing,
+  facing = action?.tool && action.performance?.drawn !== false
+    ? Math.atan2(action.aim.x, action.aim.z)
+    : body.facing,
 ): Motion {
   const pose: NonNullable<Motion["pose"]> = {};
   const phase = action?.phase;
@@ -85,6 +88,16 @@ export function fieldCharacterMotion(
       Math.abs(body.vy) < 0.001 && phase !== "leaping" && phase !== "recoiling",
     pose,
     gesture: body.gesture > 0 ? "wave" : "idle",
+    ...(action?.performance?.emote &&
+    isEmoteId(action.performance.emote.id) &&
+    tick >= action.performance.emote.startedTick
+      ? {
+          emote: {
+            id: action.performance.emote.id,
+            elapsed: (tick - action.performance.emote.startedTick) / 30,
+          },
+        }
+      : {}),
   };
 }
 
@@ -186,6 +199,8 @@ export async function loadActionKit(
       ready: boolean;
       pending: boolean;
       error: string | null;
+      drawn: boolean;
+      emote: ReturnType<AvatarInstance["animationDiagnostics"]>["emote"];
     };
     retry(): void;
   }>();
@@ -315,6 +330,7 @@ export async function loadActionKit(
       const current = ++revision;
       const loadout = emptyWieldLoadout(equipment);
       if (tool) loadout.twoHanded = { item: `wield-${tool}`, primary: "right" };
+      if (action?.performance) wield.setDrawn(false, { immediate: true });
       // Transaction retains the last complete pair until the new pair is verified.
       void wield
         .setLoadout(loadout)
@@ -347,6 +363,8 @@ export async function loadActionKit(
           ready: !disposed && !pending && !loadError && !!matches,
           pending,
           error: loadError,
+          drawn: !!matches && wield.isDrawn(),
+          emote: avatar.animationDiagnostics().emote,
         };
       },
       retry() {
@@ -378,7 +396,7 @@ export async function loadActionKit(
         if (disposed || !context) return;
         session = context.session;
         action = context.state.actions?.players[context.session];
-        tick = context.state.tick;
+        tick = context.presentationTick ?? context.state.tick;
         impact = undefined;
         for (
           let i = (context.state.actions?.events.length ?? 0) - 1;
@@ -397,9 +415,18 @@ export async function loadActionKit(
         }
         const tool = action?.tool ?? null;
         if (tool !== desired) setTool(tool);
-        const targetFacing = action?.tool
-          ? Math.atan2(action.aim.x, action.aim.z)
-          : body.facing;
+        if (!pending && action?.performance)
+          wield.setDrawn(action.performance.drawn, {
+            from: action.performance.equipmentFrom,
+            elapsed: Math.max(
+              0,
+              (tick - action.performance.equipmentStarted) / 30,
+            ),
+          });
+        const targetFacing =
+          action?.tool && action.performance?.drawn !== false
+            ? Math.atan2(action.aim.x, action.aim.z)
+            : body.facing;
         const dt =
           previousTime === undefined
             ? 0
@@ -461,7 +488,7 @@ export async function loadActionKit(
         cable.visible = false;
         pulse.visible = false;
         dust.count = 0;
-        aim.visible = !!tool;
+        aim.visible = !!tool && action?.performance?.drawn !== false;
         const held = wield.getHand("right");
         if (
           action?.phase === "reeling" &&

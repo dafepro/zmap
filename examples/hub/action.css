@@ -645,6 +645,41 @@ pre {
   gap: 12px;
   pointer-events: none;
 }
+.social-controls {
+  margin: 22px 0;
+  padding: 18px 0;
+  border-top: 1px solid #b2bdaa;
+  border-bottom: 1px solid #b2bdaa;
+}
+.social-controls h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.social-controls [role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.social-controls button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #819485;
+  border-radius: 6px;
+  background: #f6f6eb;
+  color: #234b47;
+}
+.social-controls button[aria-pressed="true"] {
+  background: #234b47;
+  color: #fffbee;
+}
+.social-controls p {
+  min-height: 32px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.social-controls button:disabled {
+  opacity: 0.45;
+}
 .movement-hint span {
   background: #f6f6ebc9;
   border-radius: 5px;

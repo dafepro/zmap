@@ -1,5 +1,10 @@
 export { Zoomap } from "./client.js";
 export { WALK_SPEED, SPRINT_SPEED } from "./core.js";
+export { performanceUsable } from "./world-performance.js";
+export type {
+  PlayerPerformance,
+  WorldPerformanceCatalog,
+} from "./world-performance.js";
 export type { ClientOptions, ConnectionState } from "./client.js";
 export type { VisualOptions, Character } from "./view.js";
 export { screenToWorld } from "./view.js";

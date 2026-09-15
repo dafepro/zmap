@@ -1,5 +1,12 @@
 import "./action.css";
-import { cannonBehavior, Zoomap, type CannonState, type ToolId } from "zmap";
+import {
+  cannonBehavior,
+  Zoomap,
+  performanceUsable,
+  type CannonState,
+  type ToolId,
+} from "zmap";
+import { emoteDescriptors } from "@zmap/avatar-studio";
 import { actionYard } from "../action-content";
 import { identities } from "../content";
 import { loadActionKit } from "../action-models";
@@ -54,6 +61,15 @@ document.querySelector("#app")!.innerHTML = `
 <footer><span>Click / tap to walk <kbd>Q</kbd> Use tool <kbd>Esc</kbd> Stop</span><span>Switch to Joystick for direct movement. Keyboard: <kbd>W A S D</kbd> · <kbd>Shift</kbd> Sprint</span><button id="leave" class="text-button">Leave yard ↗</button></footer><details><summary>About this shared field</summary><p>This independent application uses the public Zoomap room and avatar APIs. The active browser simulates bounded shared play; the relay fences its authority and checkpoints actions. No physical result grants inventory, access, rewards or training credit.</p><pre id="diagnostics"></pre></details></main>`;
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
+$("feedback").insertAdjacentHTML(
+  "beforebegin",
+  `
+<section class="social-controls" aria-label="Shared expressions"><h3>Say it with a little movement.</h3>
+<div role="group" aria-label="Approved emotes">${emoteDescriptors.map(({ id, label }) => `<button data-emote="${id}" id="emote-${id}" aria-pressed="false" disabled>${label}</button>`).join("")}</div>
+<p id="emote-status" role="status">Wave, celebrate, or break into a dance.</p>
+<button id="stop-emote" disabled>Stop expression</button><button id="draw-tool" disabled>Stow tool</button>
+</section>`,
+);
 document.querySelector("aside")!.insertAdjacentHTML(
   "afterbegin",
   `
@@ -134,7 +150,46 @@ function refresh() {
     );
     pendingEquipment = undefined;
   }
-  use.disabled = !active || !tool || !fitted || pendingEquipment !== undefined;
+  const performance = state?.performance;
+  const usable = performanceUsable(performance, world.state.tick);
+  use.disabled =
+    !active ||
+    !tool ||
+    !fitted ||
+    !usable ||
+    equipment?.drawn === false ||
+    pendingEquipment !== undefined;
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    "[data-emote]",
+  )) {
+    button.disabled =
+      !active ||
+      ["charging", "leaping", "impact", "recoiling"].includes(
+        state?.phase ?? "",
+      );
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.emote === performance?.emote?.id),
+    );
+  }
+  const emote = performance?.emote;
+  $("emote-status").textContent = emote
+    ? world.state.tick < emote.startedTick
+      ? "Stowing your tool, then your expression begins…"
+      : `${emoteDescriptors.find((entry) => entry.id === emote.id)?.label ?? "Expression"} · everyone sees the same moment`
+    : "Moving or using a tool ends your expression.";
+  $<HTMLButtonElement>("stop-emote").disabled = !active || !emote;
+  const draw = $<HTMLButtonElement>("draw-tool");
+  draw.disabled =
+    !active ||
+    !tool ||
+    !fitted ||
+    ["charging", "leaping", "impact", "recoiling"].includes(state?.phase ?? "");
+  draw.textContent = performance?.drawn ? "Stow tool" : "Draw tool";
+  draw.setAttribute(
+    "aria-pressed",
+    String(performance?.drawn === false && !!tool),
+  );
   const retry = $<HTMLButtonElement>("retry-equipment");
   retry.hidden = !equipment?.error;
   retry.disabled = !active || !!equipment?.pending;
@@ -156,21 +211,27 @@ function refresh() {
       ? equipment?.error
         ? "Equipment needs attention"
         : "Preparing your field equipment…"
-      : state?.phase === "cooldown"
-        ? `Ready in ${remaining.toFixed(1)}s`
-        : state?.phase === "reeling"
-          ? "Reeling a shared ball"
-          : state?.phase === "braced"
-            ? "Braced · send something this way"
-            : state?.phase === "charging"
-              ? "Crouch · get ready…"
-              : state?.phase === "leaping"
-                ? "Up… and drive it down!"
-                : state?.phase === "impact"
-                  ? "Ground strike!"
-                  : state?.phase === "recoiling"
-                    ? "Bounce back · land on your feet"
-                    : "Ready for your next move";
+      : performance && world.state.tick < performance.equipmentUntil
+        ? performance.drawn
+          ? "Drawing your tool…"
+          : "Stowing your tool…"
+        : performance?.drawn === false
+          ? "Tool stowed · your selection is kept"
+          : state?.phase === "cooldown"
+            ? `Ready in ${remaining.toFixed(1)}s`
+            : state?.phase === "reeling"
+              ? "Reeling a shared ball"
+              : state?.phase === "braced"
+                ? "Braced · send something this way"
+                : state?.phase === "charging"
+                  ? "Crouch · get ready…"
+                  : state?.phase === "leaping"
+                    ? "Up… and drive it down!"
+                    : state?.phase === "impact"
+                      ? "Ground strike!"
+                      : state?.phase === "recoiling"
+                        ? "Bounce back · land on your feet"
+                        : "Ready for your next move";
   $("people").textContent =
     `${world.roster.length} ${world.roster.length === 1 ? "PLAYER" : "PLAYERS"}`;
   $("position").textContent =
@@ -342,6 +403,35 @@ async function start() {
         "Follow the painted arrows. Push or kick the gold ball into the teal rear intake.",
       );
     },
+    { signal },
+  );
+  for (const button of document.querySelectorAll<HTMLButtonElement>(
+    "[data-emote]",
+  ))
+    button.addEventListener(
+      "click",
+      () =>
+        run(() => {
+          movement!.stop();
+          world!.emote(button.dataset.emote!);
+          use.setAttribute("aria-pressed", "false");
+          refresh();
+        }),
+      { signal },
+    );
+  $("stop-emote").addEventListener(
+    "click",
+    () => run(() => world!.emote(null)),
+    { signal },
+  );
+  $("draw-tool").addEventListener(
+    "click",
+    () =>
+      run(() => {
+        const state = world!.state.actions?.players[world!.session];
+        world!.setToolDrawn(!state?.performance?.drawn);
+        use.setAttribute("aria-pressed", "false");
+      }),
     { signal },
   );
   $("kick-ball").addEventListener(

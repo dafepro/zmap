@@ -226,7 +226,7 @@ export function createRoomService(options: ServiceOptions) {
     }
     delete room.state.players[peer.id];
     delete room.inputAcks[peer.id];
-    syncActionPlayers(room.state);
+    syncActionPlayers(room.state, options.map.actionCatalog?.performance);
     room.pendingActions = room.pendingActions.filter(
       (command) => command.session !== peer.id,
     );
@@ -304,6 +304,14 @@ export function createRoomService(options: ServiceOptions) {
                 !message.capabilities.includes("world-objects-v1"))
             ) {
               ws.close(4400, "This map requires world-objects-v1");
+              return;
+            }
+            if (
+              options.map.actionCatalog?.performance &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("performance-v1"))
+            ) {
+              ws.close(4400, "This map requires performance-v1");
               return;
             }
             const identity = await readAdapter(
@@ -414,7 +422,10 @@ export function createRoomService(options: ServiceOptions) {
             };
             room.peers.set(peer.id, peer);
             room.state.players[peer.id] = bodyAt(options.map.spawn);
-            syncActionPlayers(room.state);
+            syncActionPlayers(
+              room.state,
+              options.map.actionCatalog?.performance,
+            );
             const cooldowns = room.actionCooldowns.get(peer.identity.id);
             if (cooldowns && room.state.actions)
               room.state.actions.players[peer.id].cooldowns = { ...cooldowns };
@@ -427,6 +438,9 @@ export function createRoomService(options: ServiceOptions) {
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
                 ...(room.supportsSprint ? ["sprint-v1"] : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
+                ...(options.map.actionCatalog?.performance
+                  ? ["performance-v1"]
+                  : []),
                 ...(options.map.objects ? ["world-objects-v1"] : []),
               ],
             });
