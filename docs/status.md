@@ -1,5 +1,7 @@
 # Delivery status — independent v3
 
+Walking refinement: Quaternius `Walk_Loop` now supplies relaxed forward and full-stride reverse walking, with calibrated hip swing and preserved knee/ankle articulation. Default-rig peak knee flexion is about 88°; backward foot excursion is 0.77 m. New tests cover knee shape, step reach, eight-direction hand ownership and stricter panel bounce/jerk limits. Original-source comparison and all-direction browser review pass; evidence sheets are refreshed in `docs/evidence/locomotion` and `docs/evidence/directional-locomotion`. See the avatar studio's `docs/motion.md` and `assets/source/locomotion/relaxed/README.md` for reproduction and adaptation details.
+
 Updated 2026-09-15 on `codex/reference-avatar-base`. This is a fresh product and library; legacy-data migration is outside scope. The current increment adds five sourced emotes and reversible one-/two-hand equipment presentation, with shared accepted timelines and source-versus-target visual review. Existing directional locomotion, sprinting, field tools and the concept-led Blender cannon remain regression-covered in the Fieldwork courtyard.
 
 ## Current delivery

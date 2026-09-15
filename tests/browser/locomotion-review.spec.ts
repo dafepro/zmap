@@ -18,7 +18,7 @@ test("authored source and modular avatars render matched gait phases, transition
   );
   expect(errors).toEqual([]);
   expect(result.errors).toEqual([]);
-  expect(result.sourceVerification.samples).toBe(168);
+  expect(result.sourceVerification.samples).toBe(208);
   expect(result.sourceVerification.maxPositionError).toBeLessThan(0.00001);
   expect(result.sourceVerification.maxRotationErrorRadians).toBeLessThan(
     0.00001,
@@ -31,7 +31,7 @@ test("authored source and modular avatars render matched gait phases, transition
     new Set([-1, 0, 1]),
   );
   const clips = new Set(steady.map((record: any) => record.locomotion.clip));
-  expect(clips.has("Walking_A") || clips.has("Walking_B")).toBe(true);
+  expect(clips.has("Walk_Loop")).toBe(true);
   for (const clip of [
     "Running_A",
     "Running_Strafe_Left",
@@ -50,7 +50,7 @@ test("authored source and modular avatars render matched gait phases, transition
   );
   expect(backwardWalk.length).toBeGreaterThan(0);
   for (const record of backwardWalk) {
-    expect(record.locomotion.clip).toBe("Walking_B");
+    expect(record.locomotion.clip).toBe("Walk_Loop");
     expect(record.locomotion.reversed).toBe(true);
   }
   for (const record of result.records) {

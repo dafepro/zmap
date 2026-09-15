@@ -23,15 +23,19 @@ const sourceURLs = [
     import.meta.url,
   ).href,
 ];
+const walkingURL = new URL(
+  "../../avatar-studio/assets/source/performances/UAL1_Standard.glb",
+  import.meta.url,
+).href;
 const sourceSamplesURL = new URL(
   "../../avatar-studio/assets/source/locomotion/kaykit/source-samples.json",
   import.meta.url,
 ).href;
 const paces = [
-  { name: "Walk", clips: ["Walking_A", "Walking_B"], speed: 1.2, x: 0, z: 1 },
+  { name: "Walk", clips: ["Walk_Loop"], speed: 1.2, x: 0, z: 1 },
   {
     name: "Brisk walk",
-    clips: ["Walking_A", "Walking_B"],
+    clips: ["Walk_Loop"],
     speed: 2.2,
     x: 0,
     z: 1,
@@ -40,7 +44,7 @@ const paces = [
   { name: "Sprint", clips: ["Running_A"], speed: 5.4, x: 0, z: 1 },
   {
     name: "Backward walk",
-    clips: ["Walking_B"],
+    clips: ["Walk_Loop"],
     speed: 2.2,
     x: 0,
     z: -1,
@@ -90,7 +94,7 @@ function driveAt(time: number): Drive {
       x: 0,
       z: -2.2,
       heading: 0,
-      label: "Backward walk · compact reverse",
+      label: "Backward walk · relaxed reverse",
     };
   if (time < 11.3)
     return {
@@ -115,14 +119,16 @@ function driveAt(time: number): Drive {
 }
 
 export async function createLocomotionReview() {
-  const [catalog, equipment, sources, sourceSamples] = await Promise.all([
-    fetch("/avatars/catalog.json").then((r) => r.json() as Promise<Catalog>),
-    fetch("/avatars/action/catalog.json").then(
-      (r) => r.json() as Promise<WieldCatalog>,
-    ),
-    Promise.all(sourceURLs.map((url) => new GLTFLoader().loadAsync(url))),
-    fetch(sourceSamplesURL).then((response) => response.json()),
-  ]);
+  const [catalog, equipment, sources, sourceSamples, walkingSource] =
+    await Promise.all([
+      fetch("/avatars/catalog.json").then((r) => r.json() as Promise<Catalog>),
+      fetch("/avatars/action/catalog.json").then(
+        (r) => r.json() as Promise<WieldCatalog>,
+      ),
+      Promise.all(sourceURLs.map((url) => new GLTFLoader().loadAsync(url))),
+      fetch(sourceSamplesURL).then((response) => response.json()),
+      new GLTFLoader().loadAsync(walkingURL),
+    ]);
   const library = new AvatarLibrary(
     catalog,
     new URL("/avatars/", location.href).href,
@@ -158,7 +164,9 @@ export async function createLocomotionReview() {
       pack.animations.map((clip) => [clip.name, clip] as const),
     ),
   );
-  const sourceRoot = source.scene;
+  let sourceRoot = source.scene;
+  const walkingRoot = walkingSource.scene;
+  const walkingMixer = new THREE.AnimationMixer(walkingRoot);
   const mixer = new THREE.AnimationMixer(sourceRoot);
   const sourceActions = new Map(
     [...clips.values()].map((clip) => [clip.name, mixer.clipAction(clip)]),
@@ -166,6 +174,11 @@ export async function createLocomotionReview() {
   const sourceDurations = new Map(
     [...clips.values()].map((clip) => [clip.name, clip.duration]),
   );
+  const walkingClip = walkingSource.animations.find(
+    (c) => c.name === "Walk_Loop",
+  )!;
+  sourceActions.set(walkingClip.name, walkingMixer.clipAction(walkingClip));
+  sourceDurations.set(walkingClip.name, walkingClip.duration);
   // Independent loader/mixer qualification: verify that Advanced clips actually
   // animate the Basic mannequin at original keys, including physical wrists.
   // Matching only action.time would pass even with missing node bindings.
@@ -223,6 +236,54 @@ export async function createLocomotionReview() {
       sourceVerification.samples++;
     }
   }
+  const walkingSamples = await fetch(
+    new URL(
+      "../../avatar-studio/assets/source/locomotion/relaxed/source-samples.json",
+      import.meta.url,
+    ),
+  ).then((r) => r.json());
+  const walkingNodes = new Map<string, THREE.Object3D>();
+  for (const [object, association] of walkingSource.parser.associations) {
+    if (object instanceof THREE.Object3D && association.nodes !== undefined)
+      walkingNodes.set(
+        walkingSource.parser.json.nodes[association.nodes].name,
+        object,
+      );
+  }
+  const walkingAction = sourceActions.get("Walk_Loop")!.reset().play();
+  for (const sample of walkingSamples.clips[
+    "UAL1_Standard.glb:Walk_Loop"
+  ].samples.slice(0, -1)) {
+    walkingAction.time = sample.time;
+    walkingMixer.update(0);
+    walkingRoot.updateMatrixWorld(true);
+    walkingSamples.sources["UAL1_Standard.glb"].joints.forEach(
+      (joint: { sourceName: string }, index: number) => {
+        const node = walkingNodes.get(joint.sourceName)!;
+        sourceVerification.maxPositionError = Math.max(
+          sourceVerification.maxPositionError,
+          node
+            .getWorldPosition(new THREE.Vector3())
+            .distanceTo(
+              new THREE.Vector3().fromArray(sample.positions, index * 3),
+            ),
+        );
+        sourceVerification.maxRotationErrorRadians = Math.max(
+          sourceVerification.maxRotationErrorRadians,
+          node
+            .getWorldQuaternion(new THREE.Quaternion())
+            .normalize()
+            .angleTo(
+              new THREE.Quaternion()
+                .fromArray(sample.rotations, index * 4)
+                .normalize(),
+            ),
+        );
+      },
+    );
+    sourceVerification.samples++;
+  }
+  walkingMixer.stopAllAction();
   if (
     sourceVerification.maxPositionError > 0.00001 ||
     sourceVerification.maxRotationErrorRadians > 0.00001
@@ -243,6 +304,13 @@ export async function createLocomotionReview() {
     sourceBounds.getSize(new THREE.Vector3()).y;
   sourceRoot.scale.set(-sourceScale, sourceScale, sourceScale);
   const sourceFloor = -sourceBounds.min.y * sourceScale;
+  const walkingBounds = new THREE.Box3().setFromObject(walkingRoot);
+  const walkingScale =
+    avatarBounds.getSize(new THREE.Vector3()).y /
+    walkingBounds.getSize(new THREE.Vector3()).y;
+  walkingRoot.scale.set(-walkingScale, walkingScale, walkingScale);
+  const walkingFloor = -walkingBounds.min.y * walkingScale;
+  walkingRoot.visible = false;
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     preserveDrawingBuffer: true,
@@ -254,6 +322,7 @@ export async function createLocomotionReview() {
   scene.add(
     avatar.object,
     sourceRoot,
+    walkingRoot,
     new THREE.HemisphereLight("#fff7df", "#81978d", 2),
   );
   const key = new THREE.DirectionalLight("#ffffff", 3);
@@ -299,6 +368,10 @@ export async function createLocomotionReview() {
     if (!action) throw new Error(`Missing original reference clip ${clip}`);
     if (selectedSource !== clip) {
       mixer.stopAllAction();
+      walkingMixer.stopAllAction();
+      source.scene.visible = walkingRoot.visible = false;
+      sourceRoot = clip === "Walk_Loop" ? walkingRoot : source.scene;
+      sourceRoot.visible = true;
       action.reset().play();
       selectedSource = clip;
     }
@@ -308,7 +381,7 @@ export async function createLocomotionReview() {
       locomotion.clip === "Rest"
         ? 0
         : locomotion.phase * sourceDurations.get(clip)!;
-    mixer.update(0);
+    (sourceRoot === walkingRoot ? walkingMixer : mixer).update(0);
     return locomotion;
   };
   function tick(dt: number, drive: Drive) {
@@ -327,7 +400,8 @@ export async function createLocomotionReview() {
     });
     matchSource();
     sourceRoot.position.copy(avatar.object.position);
-    sourceRoot.position.y = sourceFloor;
+    sourceRoot.position.y =
+      sourceRoot === walkingRoot ? walkingFloor : sourceFloor;
     sourceRoot.rotation.y = drive.heading;
   }
   function paint(isSide = side) {
@@ -473,7 +547,7 @@ export async function createLocomotionReview() {
       avatar.dispose();
       library.dispose();
       wieldLibrary.dispose();
-      for (const pack of sources)
+      for (const pack of [...sources, walkingSource])
         pack.scene.traverse((node) => {
           if (node instanceof THREE.Mesh) {
             node.geometry.dispose();
@@ -513,7 +587,7 @@ export async function captureLocomotionReview() {
     ctx.fillText(title, 16, 30);
     ctx.font = "14px Arial";
     ctx.fillText(
-      "Each pair: KayKit source, X mirrored (left) / actual Zoomap avatar (right). Same evaluated source phase.",
+      "Each pair: Quaternius walk / KayKit run source, X mirrored (left) / actual Zoomap avatar (right). Same evaluated source phase.",
       16,
       53,
     );
@@ -638,7 +712,7 @@ export async function mountLocomotionReview(
   title.style.fontSize = "24px";
   const caption = document.createElement("p");
   caption.textContent =
-    "KayKit source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share evaluated source phase; neutral rest is compared with source T-pose. Backward walk uses a compact reversed Walking_B. Strafes are authored; backward sprint reverses Running_A. The source mannequin has different proportions and some native sole penetration.";
+    "Quaternius walk / KayKit run source on the left (X mirrored to match avatar handedness). Zoomap retarget on the right. Moving clips share evaluated source phase; neutral rest is compared with source T-pose. Walking uses Walk_Loop with 15% wider hip swing, preserving knee flexion and foot orientation; backward walking reverses it. Strafes are authored; backward sprint reverses Running_A. The source mannequin has different proportions and some native sole penetration.";
   const controls = document.createElement("div");
   controls.style.cssText =
     "display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap";
@@ -772,7 +846,7 @@ export async function recordLocomotionReview(side = true, held = false) {
       ctx.fillRect(0, 576, 768, 54);
       ctx.fillStyle = "#203139";
       ctx.font = "bold 15px Arial";
-      ctx.fillText("KayKit reference (X mirrored)", 12, 596);
+      ctx.fillText("Original reference (X mirrored)", 12, 596);
       ctx.fillText("Actual modular Zoomap avatar", 394, 596);
       ctx.font = "14px Arial";
       ctx.fillText(

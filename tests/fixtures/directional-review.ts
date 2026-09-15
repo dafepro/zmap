@@ -396,7 +396,8 @@ export async function captureDirectionalReview(
         (tool && row === 4));
     for (let frame = 0; frame < 180; frame++) {
       tick(drive(frame));
-      const pose = measure(frame % 6 === 0);
+      // Measure shoe contact every frame; 10 Hz sampling aliases brief running contacts.
+      const pose = measure(true);
       const locomotion = avatar.animationDiagnostics().locomotion;
       maxPlaybackRate = Math.max(maxPlaybackRate, locomotion.playbackRate);
       maxHipYaw = Math.max(maxHipYaw, Math.abs(pose.hipYaw));
