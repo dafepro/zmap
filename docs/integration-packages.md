@@ -1,5 +1,7 @@
 # Installable integration baseline: v0.1.1
 
+Studio-only concept images and editable source are excluded from the avatar runtime tarball; required catalogs, GLBs and runtime code are included.
+
 The packages remain private to prevent accidental npm-registry publication. They are delivered as built, versioned GitHub Release tarballs. A consuming app does not need the Blender sources, demo server, development submodule or repository build scripts.
 
 ```sh
