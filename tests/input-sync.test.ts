@@ -47,7 +47,7 @@ async function setup() {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const url = `ws://127.0.0.1:${(server.address() as { port: number }).port}/room`;
   return {
-    join(id: string, capable = true) {
+    join(id: string, capable = true, sprint = capable) {
       const ws = new WebSocket(url),
         messages: any[] = [];
       peers.push(ws);
@@ -59,7 +59,10 @@ async function setup() {
             version: 1,
             room: "test",
             credential: id,
-            capabilities: capable ? ["input-ack-v1"] : [],
+            capabilities: [
+              ...(capable ? ["input-ack-v1"] : []),
+              ...(sprint ? ["sprint-v1"] : []),
+            ],
           }),
         ),
       );
@@ -105,11 +108,19 @@ test("relay validates input sequence acknowledgements and transfers the fresh ac
   b.send({
     type: "input",
     sequence: 4,
-    input: { ...idleInput(), x: 1, kick: true, wave: true, toolHeld: true },
+    input: {
+      ...idleInput(),
+      x: 1,
+      sprint: true,
+      kick: true,
+      wave: true,
+      toolHeld: true,
+    },
   });
   const input = await a.wait("input", (message) => message.session === bid);
   assert.equal(input.sequence, 4);
   assert.equal(input.input.x, 1);
+  assert.equal(input.input.sprint, true);
   b.send({ type: "input", sequence: 3, input: idleInput() });
   b.send({ type: "input", sequence: 0, input: idleInput() });
   await b.wait("rejected", (message) => /sequence/.test(message.reason));
@@ -140,6 +151,11 @@ test("relay validates input sequence acknowledgements and transfers the fresh ac
   assert.equal(next.inputs[bid].sequence, 4);
   assert.equal(next.inputs[bid].input.x, 1);
   assert.equal(next.inputs[bid].input.toolHeld, true);
+  assert.equal(
+    next.inputs[bid].input.sprint,
+    true,
+    "fresh sprint survives authority handoff",
+  );
   assert.equal(
     next.inputs[bid].input.kick,
     false,
@@ -233,6 +249,59 @@ test("legacy and input-ack clients cannot share one transient room in either joi
     assert.equal(room.roster.length, 2);
     assert.equal(room.host, welcome.session);
   }
+});
+test("sprint and pre-sprint peers cannot share authority in either join order", async (t) => {
+  for (const firstSprint of [false, true]) {
+    const s = await setup();
+    t.after(s.close);
+    const first = s.join("ari", true, firstSprint);
+    const welcome = await first.wait("welcome");
+    assert.equal(welcome.capabilities.includes("sprint-v1"), firstSprint);
+    const incompatible = s.join("sam", true, !firstSprint);
+    const closed = await incompatible.closed;
+    assert.equal(closed.code, 4400);
+    assert.match(closed.reason, /Incompatible room locomotion/);
+    const compatible = s.join("jo", true, firstSprint);
+    assert.equal((await compatible.wait("room")).host, welcome.session);
+  }
+});
+test("a pre-sprint connection cannot smuggle sprint into host inputs", async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const a = s.join("ari", true, false);
+  await a.wait("welcome");
+  a.send({
+    type: "input",
+    sequence: 1,
+    input: { ...idleInput(), x: 1, sprint: true },
+  });
+  await a.wait("rejected", (m) => /Sprint input requires/.test(m.reason));
+  assert.equal(
+    a.messages.some((m) => m.type === "input"),
+    false,
+  );
+});
+test("expired sprint is not resurrected when another browser becomes host", async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const a = s.join("ari");
+  await a.wait("welcome");
+  const b = s.join("sam"),
+    bid = (await b.wait("welcome")).session;
+  b.send({
+    type: "input",
+    sequence: 1,
+    input: { ...idleInput(), z: 1, sprint: true },
+  });
+  await a.wait("input", (m) => m.session === bid);
+  await delay(280);
+  a.send({ type: "heartbeat", eligible: false });
+  const room = await b.wait("room", (m) => m.host === bid);
+  assert.equal(
+    room.inputs[bid],
+    undefined,
+    "handoff excludes stale held movement entirely",
+  );
 });
 test("a host cannot retain authority by publishing slow token snapshots while acknowledging heartbeats", async (t) => {
   const s = await setup();

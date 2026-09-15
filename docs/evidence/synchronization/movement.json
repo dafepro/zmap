@@ -2,23 +2,23 @@
   "provenance": "Two actual Chrome peers, 75ms ±15ms each direction, every50th snapshot dropped; actual rendered transforms sampled at animation frames",
   "cadence": [
     {
-      "frames": 55,
+      "frames": 56,
       "movingFraction": 1,
-      "maximumStep": 0.06720000000000072,
-      "minimumForwardStep": 0.06639999999999947
+      "maximumStep": 0.03696000000000078,
+      "minimumForwardStep": 0.03651999999999949
     },
     {
       "frames": 55,
       "movingFraction": 1,
-      "maximumStep": 0.1134261916616396,
-      "minimumForwardStep": 0.04037975792444245
+      "maximumStep": 0.0537445221926679,
+      "minimumForwardStep": 0.02312789481272087
     }
   ],
   "initial": {
-    "session": "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf",
-    "host": "14215eb6-91f7-43a2-a456-05244627ad11",
+    "session": "502fecde-d55c-4219-b583-d97fd73932d1",
+    "host": "d39b9f72-a419-464e-a86d-143c2972479e",
     "epoch": 1,
-    "tick": 8,
+    "tick": 2,
     "local": {
       "x": -2,
       "y": 0,
@@ -30,7 +30,7 @@
       "gesture": 0
     },
     "players": {
-      "14215eb6-91f7-43a2-a456-05244627ad11": {
+      "d39b9f72-a419-464e-a86d-143c2972479e": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -40,7 +40,7 @@
         "facing": 0,
         "gesture": 0
       },
-      "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf": {
+      "502fecde-d55c-4219-b583-d97fd73932d1": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -54,10 +54,10 @@
   },
   "settled": [
     {
-      "session": "14215eb6-91f7-43a2-a456-05244627ad11",
-      "host": "14215eb6-91f7-43a2-a456-05244627ad11",
+      "session": "d39b9f72-a419-464e-a86d-143c2972479e",
+      "host": "d39b9f72-a419-464e-a86d-143c2972479e",
       "epoch": 1,
-      "tick": 90,
+      "tick": 99,
       "local": {
         "x": -2,
         "y": 0,
@@ -69,7 +69,7 @@
         "gesture": 0
       },
       "players": {
-        "14215eb6-91f7-43a2-a456-05244627ad11": {
+        "d39b9f72-a419-464e-a86d-143c2972479e": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -79,10 +79,10 @@
           "facing": 0,
           "gesture": 0
         },
-        "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf": {
-          "x": 2.3369215912774894,
+        "502fecde-d55c-4219-b583-d97fd73932d1": {
+          "x": 0.3334523779156058,
           "y": 0,
-          "z": -7.3369215912774965,
+          "z": -5.333452377915615,
           "vx": 0,
           "vy": 0,
           "vz": 0,
@@ -92,14 +92,14 @@
       }
     },
     {
-      "session": "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf",
-      "host": "14215eb6-91f7-43a2-a456-05244627ad11",
+      "session": "502fecde-d55c-4219-b583-d97fd73932d1",
+      "host": "d39b9f72-a419-464e-a86d-143c2972479e",
       "epoch": 1,
-      "tick": 86,
+      "tick": 94,
       "local": {
-        "x": 2.3369215912774894,
+        "x": 0.3334523779156058,
         "y": 0,
-        "z": -7.3369215912774965,
+        "z": -5.333452377915615,
         "vx": 0,
         "vy": 0,
         "vz": 0,
@@ -107,7 +107,7 @@
         "gesture": 0
       },
       "players": {
-        "14215eb6-91f7-43a2-a456-05244627ad11": {
+        "d39b9f72-a419-464e-a86d-143c2972479e": {
           "x": -2,
           "y": 0,
           "z": -3,
@@ -117,10 +117,10 @@
           "facing": 0,
           "gesture": 0
         },
-        "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf": {
-          "x": 2.3369215912774894,
+        "502fecde-d55c-4219-b583-d97fd73932d1": {
+          "x": 0.3334523779156058,
           "y": 0,
-          "z": -7.3369215912774965,
+          "z": -5.333452377915615,
           "vx": 0,
           "vy": 0,
           "vz": 0,
@@ -131,14 +131,14 @@
     }
   ],
   "final": {
-    "session": "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf",
-    "host": "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf",
+    "session": "502fecde-d55c-4219-b583-d97fd73932d1",
+    "host": "502fecde-d55c-4219-b583-d97fd73932d1",
     "epoch": 2,
-    "tick": 217,
+    "tick": 224,
     "local": {
-      "x": -0.39722462931049335,
+      "x": -1.2740370379818122,
       "y": 0,
-      "z": -4.60277537068951,
+      "z": -3.7259629620181878,
       "vx": 0,
       "vy": 0,
       "vz": 0,
@@ -146,10 +146,10 @@
       "gesture": 0
     },
     "players": {
-      "e4f1dbbf-81b0-4d50-bd0d-12e6d01de5bf": {
-        "x": -0.39722462931049335,
+      "502fecde-d55c-4219-b583-d97fd73932d1": {
+        "x": -1.2740370379818122,
         "y": 0,
-        "z": -4.60277537068951,
+        "z": -3.7259629620181878,
         "vx": 0,
         "vy": 0,
         "vz": 0,

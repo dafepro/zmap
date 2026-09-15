@@ -65,12 +65,12 @@ document.querySelector("#app")!.innerHTML = `
     "",
   )}</nav><span class="build-tag">V3 <span>PLAYABLE LAB</span></span></header>
 <main><section class="intro"><div><div class="eyebrow">${c.eyebrow} <span>•</span> THE COURTYARD</div><h1>${c.title}</h1><p>${c.description}</p></div><div class="intro-note"><span class="note-star">✳</span> A shared place.<br>A little more possibility.</div></section>
-<div class="workspace"><section class="world-card" aria-label="Interactive world"><div id="world"></div><div class="world-top"><span class="location"><span>↗</span> The Courtyard <small>OVERLOOK & GARDENS</small></span><span id="status" class="status" role="status">Connecting…</span></div><div class="world-bottom"><div class="player-chip"><span class="avatar-dot">${identities[actor].name.slice(0, 1)}</span><div><strong>${identities[actor].name}</strong><small id="elevation">Ground level · 0.0 m</small></div></div><button id="recenter" class="small-button" title="Focus movement controls">⌖ <span>Move here</span></button></div><div id="world-message" class="world-message" hidden><strong id="message-title"></strong><p id="message-detail"></p><button id="rejoin">Enter courtyard ↗</button></div><div id="stick" class="stick" aria-label="Touch movement control"><span></span></div><div class="touch-actions"><button id="kick" aria-label="Kick nearby ball">↗<small>Kick</small></button><button id="wave" aria-label="Wave">✋<small>Wave</small></button></div><div id="placement-hint" class="placement-hint" hidden>Tap a green garden to preview your decoration</div></section>
+<div class="workspace"><section class="world-card" aria-label="Interactive world"><div id="world"></div><div class="world-top"><span class="location"><span>↗</span> The Courtyard <small>OVERLOOK & GARDENS</small></span><span id="status" class="status" role="status">Connecting…</span></div><div class="world-bottom"><div class="player-chip"><span class="avatar-dot">${identities[actor].name.slice(0, 1)}</span><div><strong>${identities[actor].name}</strong><small id="elevation">Ground level · 0.0 m</small></div></div><button id="recenter" class="small-button" title="Focus movement controls">⌖ <span>Move here</span></button></div><div id="world-message" class="world-message" hidden><strong id="message-title"></strong><p id="message-detail"></p><button id="rejoin">Enter courtyard ↗</button></div><button id="sprint" class="sprint-control" aria-pressed="false" title="Sprint · hold Shift or toggle here" disabled>Sprint</button><div id="stick" class="stick" aria-label="Touch movement control"><span></span></div><div class="touch-actions"><button id="kick" aria-label="Kick nearby ball">↗<small>Kick</small></button><button id="wave" aria-label="Wave">✋<small>Wave</small></button></div><div id="placement-hint" class="placement-hint" hidden>Tap a green garden to preview your decoration</div></section>
 <aside class="sidebar"><div class="panel-header"><span class="eyebrow">YOUR VISIT</span><span class="live-dot"></span></div><h2>${mode === "decorate" ? "A corner of your own" : mode === "shared" ? "Good company. Good play." : "Small world. Real depth."}</h2><ol class="steps">${c.steps.map((s, i) => `<li><span>0${i + 1}</span>${s}</li>`).join("")}</ol>
 <div class="divider"></div><div class="people-heading"><h3>In the courtyard</h3><span id="count">0 / 20</span></div><div id="people" class="people"></div><a class="invite" href="/?mode=${mode}&as=${actor === "ari" ? "sam" : "ari"}" target="_blank" rel="noopener">Open a friend’s view <span>↗</span></a><p class="fine-print">A second real client, with a separate demo identity.</p>
 ${mode === "decorate" ? `<div class="divider"></div><h3>My app inventory</h3><div id="inventory" class="inventory"></div><div id="editor" hidden><div class="edit-title"><strong id="edit-name"></strong><button id="cancel" class="text-button">Cancel</button></div><div class="nudge"><button data-nudge="-0.5,0" aria-label="Move west">←</button><button data-nudge="0,-0.5" aria-label="Move north">↑</button><button data-nudge="0,0.5" aria-label="Move south">↓</button><button data-nudge="0.5,0" aria-label="Move east">→</button><button id="rotate" aria-label="Rotate decoration">↻</button></div><p id="placement-status" role="status"></p><button id="save" class="primary">Save placement</button><button id="remove" class="text-button" hidden>Return to inventory</button></div><p id="save-status" class="save-status" role="status"></p>` : `<div class="discovery"><span>✳</span><div><strong>${mode === "shared" ? "Pass, launch, repeat." : "There’s another way up."}</strong><p>${mode === "shared" ? "Kick the ball onto the golden pad. Every visitor sees the same launch." : "The bridge is a real surface. The path below it is a different place."}</p></div></div>`}
 <div class="divider"></div><button id="leave" class="leave">Leave courtyard <span>↗</span></button></aside></div>
-<footer class="footer"><div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Space</kbd> Kick</span><span><kbd>E</kbd> Wave</span><span class="touch-note">Touch: move with the thumb pad</span></div><details><summary>Under the hood <span>＋</span></summary><div class="diagnostics"><p>Independent consumer · public ZMap API · app-owned content & identity</p><pre id="diagnostics"></pre><p>Development identities only. No training data or rewards. Desktop samples are not phone benchmarks.</p></div></details></footer></main>`;
+<footer class="footer"><div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Sprint</span><span><kbd>Space</kbd> Kick</span><span><kbd>E</kbd> Wave</span><span class="touch-note">Touch: move with the thumb pad</span></div><details><summary>Under the hood <span>＋</span></summary><div class="diagnostics"><p>Independent consumer · public ZMap API · app-owned content & identity</p><pre id="diagnostics"></pre><p>Development identities only. No training data or rewards. Desktop samples are not phone benchmarks.</p></div></details></footer></main>`;
 const el = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 let world: Zoomap | undefined,
@@ -298,6 +298,13 @@ el("leave").onclick = () => {
 el("recenter").onclick = () => world?.view.canvas.focus();
 el("kick").onclick = () => world?.action("kick");
 el("wave").onclick = () => world?.action("wave");
+el("sprint").addEventListener("pointerdown", (event) => event.preventDefault());
+el("sprint").onclick = () => {
+  if (!world) return;
+  const next = !world.sprinting;
+  world.view.canvas.focus({ preventScroll: true });
+  world.setSprinting(next);
+};
 if (mode === "decorate") {
   el("cancel").onclick = cancel;
   el("save").onclick = () => void save();
@@ -348,6 +355,10 @@ for (const event of ["pointerup", "pointercancel", "lostpointercapture"])
   });
 const diagnosticsTimer = setInterval(() => {
   if (!world) return;
+  const sprint = el<HTMLButtonElement>("sprint");
+  sprint.disabled = world.status !== "ready" || !!preview;
+  sprint.setAttribute("aria-pressed", String(world.sprinting));
+  sprint.textContent = world.sprinting ? "Sprint · on" : "Sprint";
   const d = world.view.diagnostics();
   el("elevation").textContent =
     `${(world.local?.y ?? 0) > 1 ? "Upper level" : "Ground level"} · ${(world.local?.y ?? 0).toFixed(1)} m`;

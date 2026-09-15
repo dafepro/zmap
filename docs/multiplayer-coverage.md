@@ -32,6 +32,8 @@ The [120-second simulation sample](evidence/actions/core-load.json) uses 20 acto
 
 `tests/browser/navigation.spec.ts` verifies actual click/tap movement, remote persistence, redirection and Escape; terrain routes around a wall and onto the ramp/bridge; joystick capture cancellation; and portrait layout. Pure navigation tests also execute planned paths through ordinary movement physics and reject unsupported gaps, blocked placements and excessive work.
 
+`tests/browser/sprint.spec.ts` drives Shift press/release through shaped traffic, verifies 5.4/2.2 m/s on both the moving peer and authority, changes host during sprinting, and checks release/blur persistence. Its portrait journey exercises the Sprint toggle with path arrival, joystick, Stop and input suspension. A same-epoch departure test samples the live host every rendered frame and rejects position/tick rollback or replay of released input. Unit/socket tests cover normalization, collisions, movement locks, stale input, replay, and `sprint-v1` compatibility in both join orders. Predicted path arrival retains its destination until authority confirms it, so a handoff during the final steps cannot discard the remaining route.
+
 Ball-to-ball tests cover shared substeps, momentum/energy, extreme authored masses, piles, high speeds and terrain separation. Wake Driver tests require a real supported landing before a pulse and replay checkpoints from every physical action phase. These strengthen functional and bounded-state coverage; the outstanding full-room phone, thermal and network percentile qualifications above remain unchanged.
 
 ## Cannon and reusable world objects

@@ -8,12 +8,13 @@ import {
   stepWorld,
   validateMap,
   validSimulation,
+  WALK_SPEED,
 } from "zmap/core";
 import { courtyard } from "../examples/content";
 test("ramp connects ground to overlook without jumping; bridge and underpass remain separate", () => {
   validateMap(courtyard);
   const player = bodyAt({ x: -7, y: 0, z: 6 });
-  for (let i = 0; i < 72; i++)
+  for (let i = 0; i < Math.ceil((9.6 / WALK_SPEED) * 30); i++)
     movePlayer(courtyard, player, { ...idleInput(), z: -1 }, 1 / 30);
   assert.ok(player.y > 2.99);
   assert.ok(player.z < -3);

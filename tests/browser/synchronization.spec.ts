@@ -1,6 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 import { mkdir, writeFile } from "node:fs/promises";
+import { WALK_SPEED } from "../../src/core.js";
+const screenAxisSpeed = WALK_SPEED / Math.SQRT2;
 
 const read = (page: Page) =>
   page.evaluate(() => {
@@ -74,7 +76,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     await b.keyboard.up("d");
     await expect
       .poll(async () => (await read(a)).players[sid].x)
-      .toBeGreaterThan(initial.local.x + 2.5);
+      .toBeGreaterThan(initial.local.x + screenAxisSpeed * 1.25);
     await b.waitForTimeout(1200);
     const settled = await Promise.all([read(a), read(b)]);
     expect(
@@ -141,7 +143,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     await a.keyboard.up("a");
     await expect
       .poll(async () => (await read(b)).players[hostInitial.session].x)
-      .toBeLessThan(hostInitial.local.x - 1.8);
+      .toBeLessThan(hostInitial.local.x - screenAxisSpeed * 0.85);
     const epoch = (await read(b)).epoch;
     await a.close();
     await expect.poll(async () => (await read(b)).epoch).toBeGreaterThan(epoch);
@@ -153,7 +155,9 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     await b.keyboard.up("a");
     await b.waitForTimeout(900);
     const final = await read(b);
-    expect(final.local.x).toBeLessThan(promoted.local.x - 1.6);
+    expect(final.local.x).toBeLessThan(
+      promoted.local.x - screenAxisSpeed * 0.75,
+    );
     expect(final.local.x).toBeCloseTo(final.players[sid].x, 4);
     await mkdir("docs/evidence/synchronization", { recursive: true });
     await writeFile(
@@ -210,7 +214,9 @@ test("a visible host stalled to one frame per second yields authority instead of
     await b.keyboard.up("d");
     await b.waitForTimeout(1200);
     const final = await read(b);
-    expect(final.local.x).toBeGreaterThan(start.local.x + 2);
+    expect(final.local.x).toBeGreaterThan(
+      start.local.x + screenAxisSpeed * 1.1,
+    );
     expect(final.local.x).toBeCloseTo(final.players[final.session].x, 4);
     await expect
       .poll(async () => (await read(a)).players[final.session].x)

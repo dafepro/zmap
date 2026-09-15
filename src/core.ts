@@ -69,6 +69,8 @@ export type Input = {
   z: number;
   kick: boolean;
   wave: boolean;
+  /** Held locomotion intent. Omitted and false both select walking. */
+  sprint?: boolean;
   toolHeld?: boolean;
 };
 export type Body = Vec3 & {
@@ -120,6 +122,9 @@ export type DurableState = {
 };
 export type RoomLayout = Omit<DurableState, "receipts">;
 export const STEP = 1 / 30;
+/** Shared movement tuning in metres per second, used by prediction and authority. */
+export const WALK_SPEED = 2.2;
+export const SPRINT_SPEED = 5.4;
 export const idleInput = (): Input => ({
   x: 0,
   z: 0,
@@ -365,6 +370,7 @@ export function normalizeInput(input: Input): Input {
     z: z / length,
     kick: input?.kick === true,
     wave: input?.wave === true,
+    ...(typeof input?.sprint === "boolean" ? { sprint: input.sprint } : {}),
     ...(typeof input?.toolHeld === "boolean"
       ? { toolHeld: input.toolHeld }
       : {}),
@@ -380,8 +386,9 @@ export function movePlayer(
   impulse?: { x: number; z: number },
 ) {
   const i = normalizeInput(input);
-  body.vx = i.x * 4 + (impulse?.x ?? 0);
-  body.vz = i.z * 4 + (impulse?.z ?? 0);
+  const speed = i.sprint ? SPRINT_SPEED : WALK_SPEED;
+  body.vx = i.x * speed + (impulse?.x ?? 0);
+  body.vz = i.z * speed + (impulse?.z ?? 0);
   if (i.x || i.z) body.facing = Math.atan2(i.x, i.z);
   if (i.wave) body.gesture = 1.2;
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);

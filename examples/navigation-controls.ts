@@ -3,6 +3,8 @@ import {
   findWalkPath,
   canWalkSegment,
   actionMovementLocked,
+  WALK_SPEED,
+  SPRINT_SPEED,
   type Vec3,
   type WorldMap,
   type Zoomap,
@@ -53,6 +55,7 @@ export function createNavigationControls(
     stick: HTMLElement;
     status: HTMLElement;
     stop: HTMLButtonElement;
+    sprint: HTMLButtonElement;
   },
 ) {
   const lifecycle = new AbortController(),
@@ -99,8 +102,9 @@ export function createNavigationControls(
   const status = (message: string) => {
     if (ui.status.textContent !== message) ui.status.textContent = message;
   };
-  const stop = (message = hint()) => {
+  const stop = (message = hint(), clearSprint = true) => {
     if (dead) return;
+    if (clearSprint) world.setSprinting(false);
     if (target || stickPointer !== undefined) world.setWorldInput(0, 0);
     target = null;
     route = [];
@@ -245,7 +249,7 @@ export function createNavigationControls(
       )
         return;
       event.preventDefault();
-      stop();
+      stop(hint(), false);
       canvas.focus({ preventScroll: true });
       stickPointer = event.pointerId;
       ui.stick.setPointerCapture(stickPointer);
@@ -283,7 +287,7 @@ export function createNavigationControls(
           "Escape",
         ].includes(event.code)
       ) {
-        stop();
+        stop(hint(), event.code === "Escape");
         releaseStick();
       }
     },
@@ -303,9 +307,26 @@ export function createNavigationControls(
     { signal },
   );
   ui.stop.addEventListener("click", () => stop(), { signal });
+  // Keep pointer toggles from blurring the canvas and clearing a route's held intent.
+  // Keyboard users can focus and activate the button normally.
+  ui.sprint.addEventListener("pointerdown", (event) => event.preventDefault(), {
+    signal,
+  });
+  ui.sprint.addEventListener(
+    "click",
+    () => {
+      const next = !world.sprinting;
+      canvas.focus({ preventScroll: true });
+      world.setSprinting(next);
+    },
+    { signal },
+  );
   const update = (now: number) => {
     if (dead) return;
     frame = requestAnimationFrame(update);
+    ui.sprint.disabled = world.status !== "ready";
+    ui.sprint.setAttribute("aria-pressed", String(world.sprinting));
+    ui.sprint.textContent = world.sprinting ? "Sprint · on" : "Sprint";
     if (!target) return;
     const body = world.local;
     if (!body || world.status !== "ready" || document.hidden) {
@@ -329,12 +350,35 @@ export function createNavigationControls(
       dz = point.z - body.z,
       distance = Math.hypot(dx, dz);
     if (distance < 0.075 && Math.abs(point.y - body.y) < 0.15) {
+      if (waypoint === route.length - 1 && world.host !== world.session) {
+        const accepted = world.state.players[world.session];
+        if (
+          !accepted ||
+          Math.hypot(
+            accepted.x - point.x,
+            accepted.y - point.y,
+            accepted.z - point.z,
+          ) > 0.15
+        ) {
+          // Prediction may arrive before the host consumes the last movement.
+          // Keep the destination until the checkpoint agrees so a host handoff
+          // can resume the route instead of abandoning it short of the target.
+          world.setWorldInput(0, 0);
+          status("Arriving…");
+          return;
+        }
+      }
       if (++waypoint === route.length) {
         stop("You’re here · choose your next move");
         return;
       }
     } else {
-      const speed = Math.min(1, distance * 4);
+      // Arrival speed is measured in metres/second, independent of gait. A faster
+      // sprint must not overshoot a tiny waypoint and orbit the destination.
+      const speed = Math.min(
+        1,
+        (distance * 12) / (world.sprinting ? SPRINT_SPEED : WALK_SPEED),
+      );
       world.setWorldInput(
         (dx / Math.max(distance, 0.001)) * speed,
         (dz / Math.max(distance, 0.001)) * speed,
@@ -381,6 +425,7 @@ export function createNavigationControls(
       target: target ? { ...target } : null,
       route: route.map((point) => ({ ...point })),
       waypoint,
+      sprinting: world.sprinting,
     }),
     dispose() {
       suspend();

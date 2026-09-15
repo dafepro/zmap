@@ -1,24 +1,24 @@
 {
   "provenance": "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
-  "recoveryMs": 132,
+  "recoveryMs": 150,
   "pass": [
     {
       "kind": "reel",
-      "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798"
+      "session": "8177ac2e-7986-4fce-a5c2-15d684e661a5"
     },
     {
       "kind": "pitch",
-      "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798"
+      "session": "8177ac2e-7986-4fce-a5c2-15d684e661a5"
     },
     {
       "kind": "rebound",
-      "session": "b61c3ad0-8974-401e-ab3c-d077c67e018e"
+      "session": "444dd1e0-5179-438e-b190-5fe4c43919e1"
     }
   ],
   "pulse": {
     "id": 5,
-    "tick": 292,
-    "session": "3ff8d392-5ec5-4ec9-afc8-328d5ad1d798",
+    "tick": 380,
+    "session": "8177ac2e-7986-4fce-a5c2-15d684e661a5",
     "tool": "wake-driver",
     "kind": "pulse",
     "position": {
@@ -27,21 +27,21 @@
       "z": -2.4
     }
   },
-  "bytes": 1688,
+  "bytes": 1648,
   "state": {
-    "tick": 335,
+    "tick": 426,
     "players": {
-      "b61c3ad0-8974-401e-ab3c-d077c67e018e": {
-        "x": -1.9946200262284892,
+      "444dd1e0-5179-438e-b190-5fe4c43919e1": {
+        "x": -1.9954574276585255,
         "y": 0,
-        "z": -0.20413453994821865,
-        "vx": 0.000007564658583826981,
+        "z": -0.2281308209599191,
+        "vx": 0.0000039168433563894,
         "vy": 0,
-        "vz": 0.003087556409525979,
-        "facing": -3.1193940362828942,
+        "vz": 0.0018726991504793096,
+        "facing": -3.119662237989878,
         "gesture": 0
       },
-      "61fc5da2-43eb-4e78-b81e-4e8481fad0b3": {
+      "9b9f104a-80cd-4585-90f6-54645763239c": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -65,11 +65,11 @@
       },
       "ball": {
         "x": -2,
-        "y": 0.038437263360000126,
-        "z": 12.286590712334451,
+        "y": 0,
+        "z": 6.346905919712432,
         "vx": 0,
-        "vy": 0.1606210560000022,
-        "vz": 8.495421883962555,
+        "vy": 0,
+        "vz": 3.2487297836810276,
         "facing": 0,
         "gesture": 0
       },
@@ -97,10 +97,10 @@
     "triggers": {},
     "actions": {
       "version": 1,
-      "appliedSequence": 20,
+      "appliedSequence": 19,
       "eventSequence": 5,
       "players": {
-        "b61c3ad0-8974-401e-ab3c-d077c67e018e": {
+        "444dd1e0-5179-438e-b190-5fe4c43919e1": {
           "tool": "rebound-panel",
           "phase": "idle",
           "held": false,
@@ -115,18 +115,18 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
-          "phaseStarted": 215,
-          "phaseUntil": 215,
-          "lastHeldTick": 213,
+          "phaseStarted": 263,
+          "phaseUntil": 263,
+          "lastHeldTick": 261,
           "target": null,
           "sequence": 9,
           "impulse": {
-            "x": 0.000007564658583826981,
-            "z": 0.003087556409525979
+            "x": 0.0000039168433563894,
+            "z": 0.0018726991504793096
           },
-          "immuneUntil": 322
+          "immuneUntil": 410
         },
-        "61fc5da2-43eb-4e78-b81e-4e8481fad0b3": {
+        "9b9f104a-80cd-4585-90f6-54645763239c": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -170,14 +170,14 @@
     "characters": 2,
     "readiness": [
       {
-        "session": "b61c3ad0-8974-401e-ab3c-d077c67e018e",
+        "session": "444dd1e0-5179-438e-b190-5fe4c43919e1",
         "desired": "rebound-panel",
         "ready": true,
         "pending": false,
         "error": null
       },
       {
-        "session": "61fc5da2-43eb-4e78-b81e-4e8481fad0b3",
+        "session": "9b9f104a-80cd-4585-90f6-54645763239c",
         "desired": null,
         "ready": true,
         "pending": false,
@@ -211,7 +211,7 @@
     ]
   },
   "traffic": {
-    "incoming": 320036,
-    "outgoing": 40010
+    "incoming": 385762,
+    "outgoing": 57246
   }
 }

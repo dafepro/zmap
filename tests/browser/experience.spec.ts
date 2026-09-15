@@ -72,7 +72,7 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
     ...(window as any).zoomapExample.world.local,
   }));
   await host.keyboard.down("d");
-  await host.waitForTimeout(450);
+  await host.waitForTimeout(650);
   await host.keyboard.up("d");
   const after = await host.evaluate(() => ({
     ...(window as any).zoomapExample.world.local,

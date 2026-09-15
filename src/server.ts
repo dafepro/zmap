@@ -64,6 +64,7 @@ type Peer = {
   kickSequence: number;
   waveSequence: number;
   acknowledgesInput: boolean;
+  supportsSprint: boolean;
 };
 type Room = {
   id: string;
@@ -80,6 +81,7 @@ type Room = {
   progressAt: number;
   progressTick: number;
   acknowledgesInput: boolean;
+  supportsSprint: boolean;
 };
 export function createRoomService(options: ServiceOptions) {
   validateMap(options.map, options.objectBehaviors);
@@ -319,10 +321,24 @@ export function createRoomService(options: ServiceOptions) {
             const acknowledgesInput =
               Array.isArray(message.capabilities) &&
               message.capabilities.includes("input-ack-v1");
+            const supportsSprint =
+              Array.isArray(message.capabilities) &&
+              message.capabilities.includes("sprint-v1");
             if (room && room.acknowledgesInput !== acknowledgesInput) {
               ws.close(
                 4400,
                 "Incompatible room input protocol; update all room clients",
+              );
+              return;
+            }
+            if (supportsSprint && !acknowledgesInput) {
+              ws.close(4400, "Sprint requires input-ack-v1");
+              return;
+            }
+            if (room && room.supportsSprint !== supportsSprint) {
+              ws.close(
+                4400,
+                "Incompatible room locomotion protocol; update all room clients",
               );
               return;
             }
@@ -354,6 +370,7 @@ export function createRoomService(options: ServiceOptions) {
                 progressAt: Date.now(),
                 progressTick: 0,
                 acknowledgesInput,
+                supportsSprint,
               };
               rooms.set(room.id, room);
             }
@@ -393,6 +410,7 @@ export function createRoomService(options: ServiceOptions) {
               kickSequence: 0,
               waveSequence: 0,
               acknowledgesInput,
+              supportsSprint,
             };
             room.peers.set(peer.id, peer);
             room.state.players[peer.id] = bodyAt(options.map.spawn);
@@ -407,6 +425,7 @@ export function createRoomService(options: ServiceOptions) {
               session: peer.id,
               capabilities: [
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
+                ...(room.supportsSprint ? ["sprint-v1"] : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
                 ...(options.map.objects ? ["world-objects-v1"] : []),
               ],
@@ -430,6 +449,8 @@ export function createRoomService(options: ServiceOptions) {
               broadcast(room, metadata(room));
             }
           } else if (message.type === "input") {
+            if (message.input?.sprint !== undefined && !peer.supportsSprint)
+              throw Error("Sprint input requires sprint-v1");
             if (message.sequence !== undefined) {
               if (
                 !Number.isSafeInteger(message.sequence) ||

@@ -7,7 +7,7 @@
       "cannon-ball",
       "practice-ball"
     ],
-    "epoch": 2,
+    "epoch": 1,
     "asset": {
       "ready": true,
       "assetBytes": 721264,
@@ -16,7 +16,7 @@
           "id": "courtyard-cannon",
           "phase": "ready",
           "progress": 0,
-          "displayedTick": 164.95,
+          "displayedTick": 333.49799999999993,
           "lastFire": null,
           "fireAge": null,
           "recoil": 0,
@@ -30,31 +30,31 @@
   },
   "fused": {
     "id": 1,
-    "tick": 181,
+    "tick": 339,
     "object": "courtyard-cannon",
     "kind": "fuse",
     "data": {
       "toy": "cannon-ball",
       "position": {
-        "x": 6.037036134224313,
-        "y": 0.17822976924473172,
-        "z": -5.719999990038446
+        "x": 6.04088967197733,
+        "y": 0.178283432865749,
+        "z": -5.719999990056348
       }
     }
   },
   "joining": {
-    "tick": 182,
-    "session": "6d8c39bb-9769-4dd7-be8e-28052a25442d",
+    "tick": 344,
+    "session": "d30d5fa5-558d-49f3-b501-abe85f31ad66",
     "object": {
       "balls": {
         "cannon-ball": {
           "phase": "fuse",
-          "startedTick": 181,
-          "untilTick": 205,
+          "startedTick": 339,
+          "untilTick": 363,
           "position": {
-            "x": 6.037036134224313,
-            "y": 0.17822976924473172,
-            "z": -5.719999990038446
+            "x": 6.04088967197733,
+            "y": 0.178283432865749,
+            "z": -5.719999990056348
           }
         }
       }
@@ -62,15 +62,15 @@
     "events": [
       {
         "id": 1,
-        "tick": 181,
+        "tick": 339,
         "object": "courtyard-cannon",
         "kind": "fuse",
         "data": {
           "toy": "cannon-ball",
           "position": {
-            "x": 6.037036134224313,
-            "y": 0.17822976924473172,
-            "z": -5.719999990038446
+            "x": 6.04088967197733,
+            "y": 0.178283432865749,
+            "z": -5.719999990056348
           }
         }
       }
@@ -78,7 +78,7 @@
   },
   "launch": {
     "id": 2,
-    "tick": 205,
+    "tick": 363,
     "object": "courtyard-cannon",
     "kind": "fire",
     "data": {
@@ -95,14 +95,14 @@
       }
     }
   },
-  "recoveryMs": 807,
+  "recoveryMs": 759,
   "departedHost": {
-    "host": "dc93e53f-5e6d-4f07-95a8-28bfcc4c72bf",
-    "session": "dc93e53f-5e6d-4f07-95a8-28bfcc4c72bf",
-    "epoch": 2,
-    "tick": 186,
+    "host": "d8453c50-9fa7-4631-bee4-75177d2a0ed3",
+    "session": "d8453c50-9fa7-4631-bee4-75177d2a0ed3",
+    "epoch": 1,
+    "tick": 351,
     "phase": "fuse",
-    "remainingTicks": 19
+    "remainingTicks": 12
   },
   "ids": [
     "ball",
@@ -111,19 +111,19 @@
     "practice-ball"
   ],
   "state": {
-    "tick": 216,
+    "tick": 374,
     "players": {
-      "6347bc7e-ebdc-42ab-a28d-cdc82153866e": {
-        "x": 5.950393190737192,
+      "94a0b15d-5297-416c-b602-25c36bd8a684": {
+        "x": 7.749452722461479,
         "y": 0,
-        "z": -7.193832408113869,
+        "z": -5.188652651981148,
         "vx": 0,
         "vy": 0,
         "vz": 0,
-        "facing": 2.0562011350721514,
+        "facing": 1.7916250965242373,
         "gesture": 0
       },
-      "6d8c39bb-9769-4dd7-be8e-28052a25442d": {
+      "d30d5fa5-558d-49f3-b501-abe85f31ad66": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -183,13 +183,13 @@
       "appliedSequence": 3,
       "eventSequence": 0,
       "players": {
-        "6347bc7e-ebdc-42ab-a28d-cdc82153866e": {
+        "94a0b15d-5297-416c-b602-25c36bd8a684": {
           "tool": null,
           "phase": "idle",
           "held": false,
           "aim": {
-            "x": 0.8844861516251243,
-            "z": -0.4665664449822529
+            "x": 0.97571625209357,
+            "z": -0.21903834230672242
           },
           "aimManual": false,
           "cooldownUntil": 0,
@@ -198,18 +198,18 @@
             "rebound-panel": 0,
             "wake-driver": 0
           },
-          "phaseStarted": 92,
-          "phaseUntil": 92,
+          "phaseStarted": 0,
+          "phaseUntil": 0,
           "lastHeldTick": 0,
           "target": null,
-          "sequence": 2,
+          "sequence": 0,
           "impulse": {
             "x": 0,
             "z": 0
           },
           "immuneUntil": 0
         },
-        "6d8c39bb-9769-4dd7-be8e-28052a25442d": {
+        "d30d5fa5-558d-49f3-b501-abe85f31ad66": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -246,8 +246,8 @@
           "balls": {
             "cannon-ball": {
               "phase": "cooldown",
-              "startedTick": 205,
-              "untilTick": 228,
+              "startedTick": 363,
+              "untilTick": 386,
               "position": {
                 "x": 6,
                 "y": 0.5,
@@ -260,21 +260,21 @@
       "events": [
         {
           "id": 1,
-          "tick": 181,
+          "tick": 339,
           "object": "courtyard-cannon",
           "kind": "fuse",
           "data": {
             "toy": "cannon-ball",
             "position": {
-              "x": 6.037036134224313,
-              "y": 0.17822976924473172,
-              "z": -5.719999990038446
+              "x": 6.04088967197733,
+              "y": 0.178283432865749,
+              "z": -5.719999990056348
             }
           }
         },
         {
           "id": 2,
-          "tick": 205,
+          "tick": 363,
           "object": "courtyard-cannon",
           "kind": "fire",
           "data": {
@@ -302,10 +302,10 @@
         "id": "courtyard-cannon",
         "phase": "fired",
         "progress": 0,
-        "displayedTick": 215.49800000000002,
+        "displayedTick": 373,
         "lastFire": 2,
-        "fireAge": 0.349933333333334,
-        "recoil": 0.020774678315586867,
+        "fireAge": 0.3333333333333333,
+        "recoil": 0.01974042400419466,
         "sparks": 0,
         "flow": 0,
         "smoke": 16,
@@ -314,10 +314,10 @@
     ]
   },
   "renderer": {
-    "frameP95Ms": 16.700000000000728,
+    "frameP95Ms": 16.799999999999272,
     "drawCalls": 148,
-    "triangles": 52112,
+    "triangles": 56868,
     "geometries": 155,
-    "textures": 18
+    "textures": 26
   }
 }

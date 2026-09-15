@@ -146,6 +146,11 @@ export class Zoomap {
     this.view.canvas.addEventListener(
       "keydown",
       (e) => {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          this.clearInput();
+          return;
+        }
         if (
           [
             "ArrowUp",
@@ -163,6 +168,7 @@ export class Zoomap {
             " ",
             "e",
             "E",
+            "Shift",
           ].includes(e.key)
         ) {
           e.preventDefault();
@@ -265,6 +271,7 @@ export class Zoomap {
           version: 1,
           capabilities: [
             "input-ack-v1",
+            "sprint-v1",
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
             ...(this.options.map.objects ? ["world-objects-v1"] : []),
           ],
@@ -285,13 +292,14 @@ export class Zoomap {
           if (
             !Array.isArray(m.capabilities) ||
             !m.capabilities.includes("input-ack-v1") ||
+            !m.capabilities.includes("sprint-v1") ||
             (this.options.map.objects &&
               !m.capabilities.includes("world-objects-v1"))
           ) {
             this.stopped = true;
             this.setStatus(
               "failed",
-              "Room service needs the required input/world-object protocol update",
+              "Room service needs the required input, sprint, or world-object protocol update",
             );
             ws.close(4400, "Input acknowledgement protocol required");
             return;
@@ -304,25 +312,64 @@ export class Zoomap {
           this.pendingAim = undefined;
         }
         if (m.type === "room") {
+          // A join/departure also publishes room metadata. If we still own this
+          // epoch, its relay checkpoint trails our live simulation by a network
+          // round trip. Replacing live authority here rewinds every moving body.
+          const retainAuthority =
+            this.host === this.session &&
+            m.host === this.session &&
+            this.epoch === m.epoch &&
+            this.state.tick >= m.state.tick;
           this.host = m.host;
           this.epoch = m.epoch;
           this.roster = m.roster;
-          this.state = m.state;
-          this.previousState = structuredClone(this.state);
-          this.presentation.reset();
-          this.presentation.push(this.state, performance.now());
+          const live = new Set(this.roster.map((peer) => peer.session));
+          const keepLive = <T>(values: Record<string, T>) =>
+            Object.fromEntries(
+              Object.entries(values).filter(([id]) => live.has(id)),
+            );
+          if (retainAuthority) {
+            this.state.players = Object.fromEntries(
+              this.roster.map(({ session }) => [
+                session,
+                this.state.players[session] ?? m.state.players[session],
+              ]),
+            );
+            if (this.state.actions)
+              this.state.actions.players = Object.fromEntries(
+                this.roster.map(({ session }) => [
+                  session,
+                  this.state.actions!.players[session] ??
+                    m.state.actions.players[session],
+                ]),
+              );
+            this.inputs = keepLive(this.inputs);
+            this.inputAt = keepLive(this.inputAt);
+            this.inputSequences = keepLive(this.inputSequences);
+            this.inputAcks = keepLive(this.inputAcks);
+          } else {
+            this.state = m.state;
+            this.previousState = structuredClone(this.state);
+            this.presentation.reset();
+            this.presentation.push(this.state, performance.now());
+            this.inputs = {};
+            this.inputAt = {};
+            this.inputSequences = {};
+            this.inputAcks = m.inputAcks ?? {};
+          }
           this.durable = m.durable;
           this.local = this.state.players[this.session]
             ? { ...this.state.players[this.session] }
             : undefined;
-          this.inputs = {};
-          this.inputAt = {};
-          this.inputSequences = {};
-          this.inputAcks = m.inputAcks ?? {};
           for (const [session, sample] of Object.entries(m.inputs ?? {}) as [
             string,
             { input: Input; sequence: number; ageMs: number },
           ][]) {
+            if (
+              retainAuthority &&
+              sample.sequence <= (this.inputSequences[session] ?? 0)
+            )
+              continue;
             this.inputs[session] = sample.input;
             this.inputSequences[session] = sample.sequence;
             this.inputAt[session] = performance.now() - sample.ageMs;
@@ -333,22 +380,39 @@ export class Zoomap {
           if (this.host !== this.session)
             this.reconcile(m.inputAcks?.[this.session]);
           else this.prediction = [];
-          this.previousLocal = this.local ? { ...this.local } : undefined;
-          this.correction = { x: 0, y: 0, z: 0 };
-          this.accumulator = 0;
-          this.actionCommands =
-            this.host === this.session ? (m.actionCommands ?? []) : [];
+          if (!retainAuthority) {
+            this.previousLocal = this.local ? { ...this.local } : undefined;
+            this.correction = { x: 0, y: 0, z: 0 };
+            this.accumulator = 0;
+            this.actionCommands =
+              this.host === this.session ? (m.actionCommands ?? []) : [];
+          } else {
+            this.actionCommands = this.actionCommands.filter((command) =>
+              live.has(command.session),
+            );
+            for (const command of (m.actionCommands ?? []) as ActionCommand[])
+              if (
+                command.sequence > (this.state.actions?.appliedSequence ?? 0) &&
+                !this.actionCommands.some(
+                  (pending) => pending.sequence === command.sequence,
+                )
+              )
+                this.actionCommands.push(command);
+          }
           this.lastStateAt = performance.now();
-          this.view.render(
-            this.state,
-            this.roster,
-            this.session,
-            this.local,
-            this.durable.items,
-            this.durable.revision,
-            performance.now(),
-            matchMedia("(prefers-reduced-motion: reduce)").matches,
-          );
+          // Existing authority presents membership on its normal interpolated
+          // animation frame, avoiding an extra un-interpolated pose mid-frame.
+          if (!retainAuthority)
+            this.view.render(
+              this.state,
+              this.roster,
+              this.session,
+              this.local,
+              this.durable.items,
+              this.durable.revision,
+              performance.now(),
+              matchMedia("(prefers-reduced-motion: reduce)").matches,
+            );
           if (!this.joinMs) this.joinMs = performance.now() - this.started;
           this.setStatus(
             this.host ? "ready" : "paused",
@@ -450,12 +514,26 @@ export class Zoomap {
   setInput(x: number, y: number) {
     if (!this.disabled) Object.assign(this.input, screenToWorld(x, y));
   }
-  /** World-space horizontal direction, normalized to walking speed. */
+  /** World-space horizontal direction, normalized to the selected locomotion speed. */
   setWorldInput(x: number, z: number) {
     if (this.disabled) return;
     const input = normalizeInput({ x, z, kick: false, wave: false });
     this.input.x = input.x;
     this.input.z = input.z;
+  }
+  /** Select sprint for pointer, joystick or custom controls. No stamina or app policy is implied. */
+  setSprinting(sprinting: boolean) {
+    if (typeof sprinting !== "boolean")
+      throw Error("Sprint input must be boolean");
+    if (!this.disabled && !document.hidden) this.input.sprint = sprinting;
+  }
+  /** Current held intent, including Shift. Actual movement still obeys action locks and collisions. */
+  get sprinting() {
+    return (
+      !this.disabled &&
+      !document.hidden &&
+      (this.input.sprint === true || this.keys.has("shift"))
+    );
   }
   private sendInput(input: Input) {
     const sequence = ++this.inputSequence;
@@ -593,6 +671,7 @@ export class Zoomap {
       +(this.keys.has("w") || this.keys.has("arrowup"));
     return normalizeInput({
       ...this.input,
+      sprint: this.sprinting,
       ...(this.options.map.actionCatalog ? { toolHeld: this.toolPressed } : {}),
       ...(x || y ? screenToWorld(x, y) : {}),
     });

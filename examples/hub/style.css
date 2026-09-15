@@ -551,6 +551,23 @@ summary {
 .touch-actions {
   display: none;
 }
+.sprint-control {
+  position: absolute;
+  top: 86px;
+  left: 22px;
+  min-width: 104px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid #718d7f;
+  border-radius: 22px;
+  background: #f6f6ebed;
+  color: #355b59;
+  font-size: 12px;
+}
+.sprint-control[aria-pressed="true"] {
+  background: #355b59;
+  color: #fffdf1;
+}
 .inventory {
   display: grid;
   gap: 7px;

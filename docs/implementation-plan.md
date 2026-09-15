@@ -36,6 +36,12 @@ Reversible defaults: fixed-angle orthographic follow view; screen-relative WASD/
 
 The owner requested broad hardening, especially ball physics and Blender art. Added scalar rolling resistance, contact-normal reflection/substeps, bounce and home reset; remote pose interpolation and frame-rate-independent presentation; an original editable Blender kit with bounded loading and independent instance disposal; isolated room queues, read deadlines, load-capacity reservations and strict saved-record validation. Regressions cover slow callbacks, pending commits, corruption, model failures and mount cancellation. Current results and remaining gaps are tracked in [status](status.md).
 
+## Referenced locomotion and sprint — 2026-09-15
+
+The owner requested a replacement for the procedural walk and an explicit sprint mechanic. The selected Quaternius CC0 walk/jog/sprint clips are preserved with source hashes, rest-frame measurements and a reproducible retargeter. Source/target browser comparisons cover four paces, both views and three body weights. The review exposed structural footwear and equipment-frame problems; articulated socks, actual shoe support hulls, occupied carrier ownership and gravity-oriented held items fix those classes of defect. The original forward clips remain distinct from adapted backward/side trajectories. See [source audit](locomotion-reference-audit.md) and [runtime workflow](../avatar-studio/docs/motion.md).
+
+Walking and sprinting now share 2.2/5.4 m/s tuning through prediction and authority, with Shift and a pointer/touch toggle. `sprint-v1` prevents mixed movement protocols. Multiplayer tests also exposed a discarded predicted destination and a same-epoch roster rewind; destination retention and live-host state preservation are now regression-covered. Sprint carries no app-owned stamina or progression policy. Existing cannon and field-tool behavior remains part of the regression suite.
+
 ## Benchmark protocol
 
 Unmeasured target hardware: iPhone SE (2022), iOS Safari and installed PWA; Pixel 6a Android Chrome; MacBook Air M1 Safari/Chrome/Firefox. Record actual OS/browser build at execution, not an assumed current version. Physical devices are required for release qualification.
