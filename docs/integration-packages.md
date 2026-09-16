@@ -1,4 +1,4 @@
-# Installable integration baseline: v0.1.1
+# Installable integration baseline: zmap v0.1.2 / Avatar Studio v0.1.1
 
 Studio-only concept images and editable source are excluded from the avatar runtime tarball; required catalogs, GLBs and runtime code are included.
 
@@ -6,7 +6,7 @@ The packages remain private to prevent accidental npm-registry publication. They
 
 ```sh
 npm install --save-exact \
-  https://github.com/dafepro/zmap/releases/download/v0.1.1/zmap-0.1.1.tgz \
+  https://github.com/dafepro/zmap/releases/download/v0.1.2/zmap-0.1.2.tgz \
   https://github.com/dafepro/zmap-avatar-studio/releases/download/v0.1.1/zmap-avatar-studio-0.1.1.tgz
 ```
 
@@ -38,3 +38,17 @@ Adjust destination to the app build root. Serve catalog and model hashes from th
 Run the independent suites in each repository and the zmap integration suites at the exact avatar pin. Bump package versions and lockfiles together. `npm pack` builds declarations/runtime through `prepack`. Inspect `npm pack --dry-run`, install the generated tarballs into an empty consumer, then upload the tarballs and checksums to matching immutable version tags. Do not replace artifacts at an existing version. Record which avatar commit zmap tested.
 
 Clone from `main` for development; use release artifacts for reproducible integration. Source-based motion review fixtures are intentionally not a consumer API.
+
+## Connected Zoomigo consumer
+
+[Zoomigo PR #66](https://github.com/dafepro/fc-workout-pwa/pull/66) contains the
+first connected Team World slice on `codex/team-world-v3`: a lazy world route,
+separate Node relay, and Go-owned session/team/participation authority. Its
+`docs/TEAM_WORLD.md` documents the one-command fixture stack, two-account browser
+tests and remaining qualification gates. The local checkout is
+`/Users/dcarrell/Documents/fc-workout-pwa`.
+
+Zmap 0.1.2 preserves the authenticated identity object privately for continuing
+access checks and suppresses unchanged host elections. These fixes support the
+consumer's private grant adapter. They do not resolve all software-rendered Linux
+stalls; this remains an integration prerelease, not pilot certification.

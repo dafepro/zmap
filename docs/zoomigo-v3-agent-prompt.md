@@ -1,5 +1,14 @@
 # Build Zoomigo v3: Team World
 
+**Continuation checkpoint:** The connected first playable now exists in
+[Zoomigo PR #66](https://github.com/dafepro/fc-workout-pwa/pull/66), branch
+`codex/team-world-v3`. Continue from that branch and read its maintained
+`docs/TEAM_WORLD.md` before implementing more. Do not restart from the original
+source survey. It consumes zmap 0.1.2 and Avatar Studio 0.1.1; saved modular
+appearances, transactional decorating, deployed topology and performance
+qualification remain active work. The rest of this prompt defines the intended
+completed integration.
+
 Integrate the current zmap world runtime and modular Avatar Studio into `dafepro/fc-workout-pwa` as a new, independent v3 team lounge, working title **Team World**. Deliver a working, tested integration—not just a plan. This is a fresh successor to the alpha Canvas v2 lounge; no old room, placement, coordinate or avatar-data migration is required. Preserve unrelated Zoomigo account and training functionality. Do not build a legacy fallback or dual-write bridge.
 
 Start by reading each repository's AGENTS.md and current source-of-truth docs. Use `main` in `dafepro/zmap` and `dafepro/zmap-avatar-studio`; record their commits and the Zoomigo commit. For zmap development clone with `--recurse-submodules`. In zmap, read `examples/hub/architecture.html`, `docs/api.md`, `docs/operations.md`, `docs/multiplayer-coverage.md`, `docs/shared-performances.md`, and `avatar-studio/README.md` plus its contracts, accessory-fitting, wielding and motion docs. Read the original intent/specs/handoff as background; this fresh-v3 instruction supersedes their migration requirements. Reconcile historical status entries against current code and test evidence. Audit Zoomigo's actual lounge routes, authentication, team authorization, deployment, inventory and appearance storage before choosing adapters.
