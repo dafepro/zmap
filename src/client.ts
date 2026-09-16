@@ -410,7 +410,7 @@ export class Zoomap {
           this.lastStateAt = performance.now();
           // Existing authority presents membership on its normal interpolated
           // animation frame, avoiding an extra un-interpolated pose mid-frame.
-          if (!retainAuthority)
+          if (!retainAuthority && this.hostHealthy)
             this.view.render(
               this.state,
               this.roster,

@@ -11,6 +11,9 @@ const read = (page: Page) =>
       session: w.session,
       host: w.host,
       epoch: w.epoch,
+      healthy: w.hostHealthy,
+      healthySince: w.healthySince,
+      clockAge: performance.now() - w.last,
       tick: w.state.tick,
       local: { ...w.local },
       players: w.state.players,
@@ -191,6 +194,12 @@ test("a visible host with a stalled simulation clock yields authority instead of
       b = await context.newPage();
     await enter(a, "ari");
     await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const state = await read(a);
+        return state.healthy && state.host === state.session;
+      })
+      .toBe(true);
     const start = await read(b);
     await a.evaluate(() => {
       const native = window.setTimeout.bind(window);
@@ -249,6 +258,17 @@ test("slow drawing callbacks do not stop a healthy simulation clock", async ({
     });
     await enter(a, "ari");
     await enter(b, "sam");
+    // Joining another avatar can compile new shaders. Measure steady operation
+    // after both peers have recovered, separately from the entry/recovery budget.
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          states[0].host === states[0].session
+        );
+      })
+      .toBe(true);
     const initial = await read(a);
     await b.locator("canvas").focus();
     await b.keyboard.down("d");
@@ -256,7 +276,10 @@ test("slow drawing callbacks do not stop a healthy simulation clock", async ({
     await b.keyboard.up("d");
     const final = await read(a);
     expect(final.host).toBe(initial.session);
-    expect(final.tick - initial.tick).toBeGreaterThan(30);
+    expect(
+      final.tick - initial.tick,
+      JSON.stringify({ initial, final }),
+    ).toBeGreaterThan(30);
     expect(final.epoch).toBe(initial.epoch);
   } finally {
     await context.close();

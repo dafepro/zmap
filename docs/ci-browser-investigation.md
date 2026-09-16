@@ -42,3 +42,32 @@ Preintegration validation passed 111 world unit/socket tests and five focused
 Chromium browser cases locally, including the three-client actions journey. The
 v0.1.2 integration prerelease also retains original private authentication context
 for continuing `canAccess` checks, independently of the public roster projection.
+
+## September 15 deployed-client diagnosis and clock isolation
+
+The real dev Team World journey now has an independent, credential-scoped Linux
+workflow in the consuming repository. Both clients obtain tickets, load all 17
+assets, receive room traffic and remain visible. The failure is an empty host
+set after graphics stalls, rather than rejected access or missing assets.
+
+Run `35045563496` in `dafepro/fc-workout-pwa` reports SwiftShader, a 984 × 396
+canvas, and repeated frames over 100 ms (175/316 and 132/204 samples for the two
+clients). CPU samples are dominated by browser/native work. Disabling MSAA in
+run `35045966304` reduced frame cost but did not restore play; that diagnostic
+setting must not become a release-gate exception.
+
+The development branch now advances simulation on its own 30 Hz timer and draws
+on animation frames. This preserves fixed-step physics, snapshot cadence and
+interpolation. A simulation interval above 250 ms still withdraws eligibility;
+recovery still needs one second of intervals below 100 ms. Drawing is suspended
+during recovery so graphics work cannot repeatedly interrupt that quiet window.
+This is main-thread scheduling isolation, not a worker or protection from every
+GPU stall. Entry timeout and leave cancel both schedules.
+
+The regression delays drawing callbacks while retaining a working simulation
+clock. The authority-handoff regression now stalls the simulation timer itself.
+Clock isolation alone failed both Linux matrix configurations in run
+`35046799049`; the drawing suspension change is still under qualification.
+All 111 unit/socket tests and TypeScript checks pass. No clock changes are yet
+released or deployed, and neither mobile rendering budgets nor Linux multiplayer
+qualification are claimed satisfied.
