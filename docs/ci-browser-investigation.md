@@ -71,3 +71,14 @@ Clock isolation alone failed both Linux matrix configurations in run
 All 111 unit/socket tests and TypeScript checks pass. No clock changes are yet
 released or deployed, and neither mobile rendering budgets nor Linux multiplayer
 qualification are claimed satisfied.
+
+Follow-up run `35047640276` at `c7c8c11` remains red: screenshots enabled passed
+2/4 cases (including slow drawing), while screenshots disabled passed 1/4.
+The three-client action and simulation-stall handoff cases remain unreliable.
+Membership messages now also respect the recovery drawing suspension. This is
+insufficient evidence to release the scheduling changes. The next controlled
+comparison should measure simulation intervals and host transitions with the
+same art in isolated browser processes versus shared-process software rendering,
+then address the measured rendering/scheduling bottleneck without weakening the
+existing real-client release gate. The consuming diagnostic has restored normal
+MSAA settings; no quality override is part of qualification.
