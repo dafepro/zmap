@@ -303,6 +303,14 @@ export function createRoomService(options: ServiceOptions) {
               return;
             }
             if (
+              options.map.actionCatalog?.interactions &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("object-interactions-v1"))
+            ) {
+              ws.close(4400, "This map requires object-interactions-v1");
+              return;
+            }
+            if (
               options.map.objects &&
               (!Array.isArray(message.capabilities) ||
                 !message.capabilities.includes("world-objects-v1"))
@@ -447,6 +455,9 @@ export function createRoomService(options: ServiceOptions) {
                   ? ["performance-v1"]
                   : []),
                 ...(options.map.objects ? ["world-objects-v1"] : []),
+                ...(options.map.actionCatalog?.interactions
+                  ? ["object-interactions-v1"]
+                  : []),
               ],
             });
             broadcast(room, metadata(room));

@@ -37,8 +37,15 @@ export type WorldActionCatalog = {
     cooldownTicks: number;
   }[];
   performance?: WorldPerformanceCatalog;
+  interactions?: {
+    object: string;
+    action: string;
+    range: number;
+    point: Vec3;
+  }[];
 };
 export type ActionIntent = { sequence: number } & (
+  | { kind: "interact"; object: string; action: string }
   | { kind: "equip"; tool: ToolId | null }
   | { kind: "use"; pressed: boolean }
   | { kind: "cancel" }
@@ -161,13 +168,36 @@ export function validateActionCatalog(
       "version",
       "tools",
       ...(c?.performance === undefined ? [] : ["performance"]),
+      ...(c?.interactions === undefined ? [] : ["interactions"]),
     ]) ||
     c.version !== 1 ||
     !Array.isArray(c.tools) ||
-    (!c.tools.length && !c.performance?.emotes.length) ||
+    (!c.tools.length &&
+      !c.performance?.emotes.length &&
+      !c.interactions?.length) ||
     c.tools.length > 3
   )
     throw Error("Invalid action catalog");
+  if (c.interactions !== undefined) {
+    if (!Array.isArray(c.interactions) || c.interactions.length > 20)
+      throw Error("Invalid interaction catalog");
+    const seen = new Set<string>();
+    for (const entry of c.interactions) {
+      const key = `${entry.object}:${entry.action}`;
+      if (
+        !exact(entry, ["object", "action", "range", "point"]) ||
+        !id(entry.object) ||
+        !id(entry.action) ||
+        seen.has(key) ||
+        !number(entry.range, 4) ||
+        entry.range < 0.25 ||
+        !exact(entry.point, ["x", "y", "z"]) ||
+        !Object.values(entry.point).every((v) => number(v, 4))
+      )
+        throw Error("Invalid interaction preset");
+      seen.add(key);
+    }
+  }
   if (c.performance !== undefined) validatePerformanceCatalog(c.performance);
   const seen = new Set<string>();
   for (const tool of c.tools) {
@@ -198,6 +228,14 @@ export function validateActionIntent(
     v.kind === "equip" &&
     exact(v, ["sequence", "kind", "tool"]) &&
     (v.tool === null || catalog.tools.some((t) => t.id === v.tool))
+  )
+    return;
+  if (
+    v.kind === "interact" &&
+    exact(v, ["sequence", "kind", "object", "action"]) &&
+    catalog.interactions?.some(
+      (e) => e.object === v.object && e.action === v.action,
+    )
   )
     return;
   if (v.kind === "cancel" && exact(v, ["sequence", "kind"])) return;
@@ -401,6 +439,7 @@ export function stepActions(
   commands: readonly ActionCommand[] = [],
   items: Placement[] = [],
   catalog: ItemType[] = [],
+  interact?: (command: ActionCommand) => void,
 ) {
   if (!map.actionCatalog || !state.actions) return;
   syncActionPlayers(state, map.actionCatalog.performance);
@@ -418,6 +457,10 @@ export function stepActions(
     validateActionIntent(intent, map.actionCatalog);
     if (intent.sequence <= p.sequence) continue;
     p.sequence = intent.sequence;
+    if (intent.kind === "interact") {
+      if (!actionMovementLocked(p)) interact?.(command);
+      continue;
+    }
     const performance = p.performance,
       config = map.actionCatalog.performance;
     if (intent.kind === "emote") {
@@ -700,6 +743,7 @@ export function finishActions(
   state: Simulation,
   items: Placement[] = [],
   catalog: ItemType[] = [],
+  interact?: (command: ActionCommand) => void,
 ) {
   if (!map.actionCatalog || !state.actions) return;
   const a = state.actions;

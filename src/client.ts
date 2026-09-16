@@ -280,6 +280,9 @@ export class Zoomap {
               ? ["performance-v1"]
               : []),
             ...(this.options.map.objects ? ["world-objects-v1"] : []),
+            ...(this.options.map.actionCatalog?.interactions
+              ? ["object-interactions-v1"]
+              : []),
           ],
           room: this.address!.room,
           credential,
@@ -299,6 +302,8 @@ export class Zoomap {
             !Array.isArray(m.capabilities) ||
             !m.capabilities.includes("input-ack-v1") ||
             !m.capabilities.includes("sprint-v1") ||
+            (this.options.map.actionCatalog?.interactions &&
+              !m.capabilities.includes("object-interactions-v1")) ||
             (this.options.map.actionCatalog?.performance &&
               !m.capabilities.includes("performance-v1")) ||
             (this.options.map.objects &&
@@ -633,6 +638,15 @@ export class Zoomap {
   setToolDrawn(drawn: boolean) {
     this.submitAction({ sequence: ++this.actionSequence, kind: "draw", drawn });
     this.toolPressed = false;
+  }
+  interact(object: string, action: string) {
+    if (this.disabled) return;
+    this.submitAction({
+      sequence: ++this.actionSequence,
+      kind: "interact",
+      object,
+      action,
+    });
   }
   private submitAction(intent: ActionIntent) {
     const catalog = this.options.map.actionCatalog;

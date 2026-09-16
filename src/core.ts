@@ -1,5 +1,6 @@
 import { advanceToys } from "./toy-physics.js";
 import {
+  applyObjectInteraction,
   initialWorldObjects,
   stepWorldObjects,
   validWorldObjectState,
@@ -431,7 +432,16 @@ export function stepWorld(
   objectBehaviors: ObjectBehaviors = [],
 ) {
   state.tick++;
-  stepActions(map, state, inputs, commands, items, catalog);
+  stepActions(map, state, inputs, commands, items, catalog, (command) =>
+    applyObjectInteraction(
+      map,
+      state,
+      command,
+      objectBehaviors,
+      items,
+      catalog,
+    ),
+  );
   const { held: heldToys, targets: heldTargets } = stepWorldObjects(
     map,
     state,

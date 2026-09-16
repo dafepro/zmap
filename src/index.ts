@@ -65,3 +65,6 @@ export type {
   ObjectEvent,
   ObjectCollider,
 } from "./world-objects.js";
+
+export { switchBehavior } from "./switch.js";
+export { objectInteractionAvailable } from "./world-objects.js";
