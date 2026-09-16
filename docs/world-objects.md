@@ -111,3 +111,9 @@ The included `switchBehavior` accepts `{ initialOn: boolean }` and exposes
 and host handoffs. A nine-tick debounce prevents simultaneous switch spam.
 It can drive a lamp or any consumer-owned presentation. It grants no inventory,
 training credit or durable entitlement.
+
+## Settled-step constraints
+
+An optional `afterStep(context)` hook runs in object ID order after player movement, actions, and all toy contacts, before a tick is published. It receives the same simulation and validated event emitter as `step`, plus `toyHeld`, but cannot request a new kinematic hold. Use it for consumer-owned boundaries or swept goal detection that must observe the final physics result. Hooks must remain deterministic; client and relay must install matching implementations and package versions. The library contains no scoring policy.
+
+The view requests a stencil buffer. Consumer character materials may use stencil masks for depth-aware occlusion effects; the renderer clears the stencil each frame.

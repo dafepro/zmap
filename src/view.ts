@@ -105,6 +105,7 @@ export class WorldView {
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: false,
+      stencil: true,
       powerPreference: "low-power",
     });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));

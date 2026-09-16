@@ -72,6 +72,8 @@ export type ObjectBehavior = {
   validEvent(event: ObjectEvent, object: WorldObject, map: WorldMap): boolean;
   /** One deterministic fixed step. No wall clock, random source, sockets, or renderer. */
   step(context: ObjectBehaviorContext): void;
+  /** Runs after player movement and all toy contacts, before publishing this tick. */
+  afterStep?(context: Omit<ObjectBehaviorContext, "holdToy">): void;
   interactions?: readonly string[];
   interact?(
     state: ObjectValue,
@@ -343,11 +345,16 @@ export function stepWorldObjects(
   const held = new Set<string>(),
     targets = new Map<string, Vec3>(),
     state = simulation.objects;
-  if (!state || !map.objects) return { held, targets };
+  const after: (() => void)[] = [];
+  const finish = () => {
+    for (const run of after) run();
+  };
+  if (!state || !map.objects) return { held, targets, finish };
   for (const object of [...map.objects].sort((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   )) {
-    implementation(object, behaviors).step({
+    const behavior = implementation(object, behaviors);
+    const context: ObjectBehaviorContext = {
       object,
       state: state.instances[object.id],
       map,
@@ -378,18 +385,23 @@ export function stepWorldObjects(
           kind,
           data: structuredClone(data),
         };
-        if (!implementation(object, behaviors).validEvent(event, object, map))
+        if (!behavior.validEvent(event, object, map))
           throw Error("Invalid world object event data");
         state.eventSequence++;
         state.events.push(event);
         if (state.events.length > 32) state.events.shift();
       },
-    });
+    };
+    behavior.step(context);
+    if (behavior.afterStep) {
+      const { holdToy: _holdToy, ...settled } = context;
+      after.push(() => behavior.afterStep!(settled));
+    }
   }
   state.events = state.events.filter(
     (event) => simulation.tick - event.tick <= 120,
   );
-  return { held, targets };
+  return { held, targets, finish };
 }
 export function worldToyColliders(map: WorldMap): WorldToyCollider[] {
   return (map.objects ?? []).flatMap((object) =>

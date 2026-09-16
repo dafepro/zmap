@@ -442,13 +442,11 @@ export function stepWorld(
       catalog,
     ),
   );
-  const { held: heldToys, targets: heldTargets } = stepWorldObjects(
-    map,
-    state,
-    objectBehaviors,
-    items,
-    catalog,
-  );
+  const {
+    held: heldToys,
+    targets: heldTargets,
+    finish,
+  } = stepWorldObjects(map, state, objectBehaviors, items, catalog);
   for (const [id, b] of Object.entries(state.players)) {
     const action = state.actions?.players[id];
     if (actionMovementLocked(action))
@@ -536,6 +534,7 @@ export function stepWorld(
     worldToyColliders(map),
     heldTargets,
   );
+  finish();
   for (const key of Object.keys(state.triggers))
     state.triggers[key] = Math.max(0, state.triggers[key] - STEP);
 }
