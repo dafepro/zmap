@@ -226,3 +226,33 @@ test("a visible host stalled to one frame per second yields authority instead of
     await context.close();
   }
 });
+
+test("slow drawing callbacks do not stop a healthy simulation clock", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  try {
+    const a = await context.newPage(),
+      b = await context.newPage();
+    await a.addInitScript(() => {
+      const native = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        native(() => {
+          setTimeout(() => callback(performance.now()), 400);
+        });
+    });
+    await enter(a, "ari");
+    await enter(b, "sam");
+    const initial = await read(a);
+    await b.locator("canvas").focus();
+    await b.keyboard.down("d");
+    await b.waitForTimeout(1600);
+    await b.keyboard.up("d");
+    const final = await read(a);
+    expect(final.host).toBe(initial.session);
+    expect(final.tick - initial.tick).toBeGreaterThan(30);
+    expect(final.epoch).toBe(initial.epoch);
+  } finally {
+    await context.close();
+  }
+});

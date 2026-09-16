@@ -21,7 +21,7 @@ jobs:
           cache: npm
       - run: npm ci && npm --prefix avatar-studio ci
       - run: npx playwright install --with-deps chromium
-      - run: npx playwright test tests/browser/entry.spec.ts tests/browser/actions.spec.ts --grep "two clients|three real clients"
+      - run: npx playwright test tests/browser/entry.spec.ts tests/browser/actions.spec.ts tests/browser/synchronization.spec.ts --grep "two clients|three real clients|slow drawing callbacks|stalled to one"
         env:
           ZMAP_BROWSER_CHANNEL: chromium
           ZMAP_TRACE_SCREENSHOTS: ${{ matrix.screenshots }}
