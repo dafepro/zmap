@@ -11,6 +11,9 @@ const read = (page: Page) =>
       session: w.session,
       host: w.host,
       epoch: w.epoch,
+      healthy: w.hostHealthy,
+      healthySince: w.healthySince,
+      clockAge: performance.now() - w.last,
       tick: w.state.tick,
       local: { ...w.local },
       players: w.state.players,
@@ -132,7 +135,9 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     });
     for (const result of cadence) {
       expect(result.frames).toBeGreaterThan(20);
-      expect(result.movingFraction).toBeGreaterThan(0.75);
+      expect(result.movingFraction, JSON.stringify(cadence)).toBeGreaterThan(
+        0.75,
+      );
       expect(result.maximumStep).toBeLessThan(0.3);
       expect(result.minimumForwardStep).toBeGreaterThan(-0.01);
     }
@@ -181,24 +186,41 @@ test("both actual peers retain sustained keyboard movement after release, latenc
   }
 });
 
-test("a visible host stalled to one frame per second yields authority instead of repeatedly rolling a friend back", async ({
+test("a visible host with a stalled simulation clock yields authority instead of repeatedly rolling a friend back", async ({
   browser,
 }) => {
   test.setTimeout(25000);
   const context = await browser.newContext();
   try {
-    const a = await context.newPage(),
+    let a = await context.newPage(),
       b = await context.newPage();
-    await a.addInitScript(() => {
-      const native = window.requestAnimationFrame.bind(window);
-      window.requestAnimationFrame = (callback) =>
-        native(() => {
-          setTimeout(() => callback(performance.now()), 850);
-        });
-    });
     await enter(a, "ari");
     await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
+      })
+      .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
     const start = await read(b);
+    await a.evaluate(() => {
+      const native = window.setTimeout.bind(window);
+      window.setTimeout = ((
+        callback: TimerHandler,
+        delay?: number,
+        ...args: unknown[]
+      ) =>
+        native(
+          callback,
+          Math.max(850, delay ?? 0),
+          ...args,
+        )) as typeof window.setTimeout;
+    });
     await b.locator("canvas").focus();
     await b.keyboard.down("d");
     await expect
@@ -222,6 +244,50 @@ test("a visible host stalled to one frame per second yields authority instead of
       .poll(async () => (await read(a)).players[final.session].x)
       .toBeCloseTo(final.local.x, 1);
     expect(final.epoch).toBeGreaterThan(start.epoch);
+  } finally {
+    await context.close();
+  }
+});
+
+test("slow drawing callbacks do not stop a healthy simulation clock", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  try {
+    let a = await context.newPage(),
+      b = await context.newPage();
+    await enter(a, "ari");
+    await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
+      })
+      .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
+    await a.evaluate(() => {
+      const native = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        native(() => {
+          setTimeout(() => callback(performance.now()), 400);
+        });
+    });
+    const initial = await read(a);
+    await b.locator("canvas").focus();
+    await b.keyboard.down("d");
+    await b.waitForTimeout(1600);
+    await b.keyboard.up("d");
+    const final = await read(a);
+    expect(final.host).toBe(initial.session);
+    expect(
+      final.tick - initial.tick,
+      JSON.stringify({ initial, final }),
+    ).toBeGreaterThan(30);
+    expect(final.epoch).toBe(initial.epoch);
   } finally {
     await context.close();
   }

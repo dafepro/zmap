@@ -385,3 +385,84 @@ test("the default 20-player room accepts exactly 20 distinct identities and reje
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("ineligible heartbeats do not re-elect an unchanged empty host", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "zmap-paused-"));
+  const http = createServer();
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    store: new ExampleStore(dir, () => true),
+    authenticate: async (token) => identities[token] ?? null,
+    canAccess: async () => true,
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const a = connect(
+    `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`,
+    "ari",
+  );
+  try {
+    await a.wait("room");
+    a.send({ type: "heartbeat", eligible: false });
+    const paused = await a.wait("room", (m) => m.host === null);
+    const before = a.messages.filter((m) => m.type === "room").length;
+    for (let i = 0; i < 5; i++) a.send({ type: "heartbeat", eligible: false });
+    await sleep(350);
+    assert.equal(
+      a.messages.filter((m) => m.type === "room").length,
+      before,
+      "no new full-state resets while host remains null",
+    );
+    a.send({ type: "heartbeat", eligible: true });
+    const resumed = await a.wait(
+      "room",
+      (m) => m.host !== null && m.epoch > paused.epoch,
+    );
+    assert.equal(resumed.epoch, paused.epoch + 1);
+  } finally {
+    a.ws.terminate();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("continuing access retains the authenticated identity context privately", async () => {
+  const trusted = new WeakSet<object>();
+  const dir = await mkdtemp(join(tmpdir(), "zmap-authority-"));
+  const http = createServer();
+  const service = createRoomService({
+    server: http,
+    map: courtyard,
+    catalog,
+    store: new ExampleStore(dir, () => true),
+    authenticate: async () => {
+      const identity = { ...identities.ari, privateGrant: "relay-only" };
+      trusted.add(identity);
+      return identity;
+    },
+    canAccess: async (identity) => trusted.has(identity),
+  });
+  await new Promise<void>((r) => http.listen(0, "127.0.0.1", r));
+  const a = connect(
+    `ws://127.0.0.1:${(http.address() as { port: number }).port}/room`,
+    "ari",
+  );
+  try {
+    const initial = await a.wait("room");
+    assert.equal(JSON.stringify(initial).includes("relay-only"), false);
+    a.send({ type: "heartbeat", eligible: true });
+    await sleep(350);
+    assert.equal(
+      a.ws.readyState,
+      WebSocket.OPEN,
+      "continuing checks use the original trusted context",
+    );
+  } finally {
+    a.ws.terminate();
+    await service.close();
+    await new Promise<void>((r) => http.close(() => r()));
+    await rm(dir, { recursive: true, force: true });
+  }
+});

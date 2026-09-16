@@ -44,3 +44,62 @@ test("room entry completes without browser errors through the real demo proxy", 
     console.log("Entry diagnostics: " + JSON.stringify(events));
   }
 });
+
+test("two clients enter with frame and host diagnostics", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const events: unknown[] = [];
+  try {
+    for (const identity of ["ari", "sam"]) {
+      const page = await context.newPage();
+      page.on("pageerror", (e) => events.push({ identity, error: e.message }));
+      page.on("websocket", (socket) => {
+        if (!socket.url().includes("action-room")) return;
+        socket.on("framereceived", ({ payload }) => {
+          const m = JSON.parse(String(payload));
+          if (["room", "welcome", "error"].includes(m.type))
+            events.push({
+              identity,
+              type: m.type,
+              host: m.host,
+              epoch: m.epoch,
+              code: m.code,
+            });
+        });
+        socket.on("framesent", ({ payload }) => {
+          const m = JSON.parse(String(payload));
+          if (m.type === "heartbeat")
+            events.push({ identity, type: m.type, eligible: m.eligible });
+        });
+      });
+      await page.goto(`/action.html?as=${identity}`);
+      await expect(page.locator("#connection")).toHaveText("Live together", {
+        timeout: 10000,
+      });
+    }
+    for (const page of context.pages())
+      await expect(page.locator("#people")).toHaveText("2 PLAYERS");
+  } finally {
+    for (const page of context.pages()) {
+      events.push(
+        await page
+          .evaluate(() => {
+            const w = (window as any).zoomapActionYard?.world;
+            return {
+              status: w?.status,
+              host: w?.host,
+              session: w?.session,
+              hidden: document.hidden,
+              tick: w?.state?.tick,
+            };
+          })
+          .catch(() => ({ unresponsive: true })),
+      );
+    }
+    console.log(
+      "Two-client diagnostics: " + JSON.stringify(events.slice(-100)),
+    );
+    await context.close();
+  }
+});

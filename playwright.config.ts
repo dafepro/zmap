@@ -7,7 +7,10 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5174",
     viewport: { width: 1440, height: 1050 },
     channel: process.env.ZMAP_BROWSER_CHANNEL || "chrome",
-    trace: "retain-on-failure",
+    trace: {
+      mode: "retain-on-failure",
+      screenshots: process.env.ZMAP_TRACE_SCREENSHOTS !== "0",
+    },
   },
   webServer: {
     command: "npm run dev",
