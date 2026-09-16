@@ -135,7 +135,9 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     });
     for (const result of cadence) {
       expect(result.frames).toBeGreaterThan(20);
-      expect(result.movingFraction).toBeGreaterThan(0.75);
+      expect(result.movingFraction, JSON.stringify(cadence)).toBeGreaterThan(
+        0.75,
+      );
       expect(result.maximumStep).toBeLessThan(0.3);
       expect(result.minimumForwardStep).toBeGreaterThan(-0.01);
     }

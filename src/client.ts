@@ -819,7 +819,10 @@ export class Zoomap {
       }
     } else this.accumulator = 0;
   };
-  private animate = (time: number) => {
+  private animate = () => {
+    // RAF timestamps can precede the latest timer tick; sample the same clock
+    // as simulation to avoid clamping alternating frames to a stale pose.
+    const time = performance.now();
     if (this.disposed || this.stopped) return;
     this.frame = requestAnimationFrame(this.animate);
     // Give an unhealthy event loop a quiet recovery window. Repeated GPU work

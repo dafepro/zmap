@@ -1,4 +1,4 @@
-# Installable integration baseline: zmap v0.1.2 / Avatar Studio v0.1.1
+# Installable integration baseline: zmap v0.1.3 / Avatar Studio v0.1.1
 
 Studio-only concept images and editable source are excluded from the avatar runtime tarball; required catalogs, GLBs and runtime code are included.
 
@@ -6,7 +6,7 @@ The packages remain private to prevent accidental npm-registry publication. They
 
 ```sh
 npm install --save-exact \
-  https://github.com/dafepro/zmap/releases/download/v0.1.2/zmap-0.1.2.tgz \
+  https://github.com/dafepro/zmap/releases/download/v0.1.3/zmap-0.1.3.tgz \
   https://github.com/dafepro/zmap-avatar-studio/releases/download/v0.1.1/zmap-avatar-studio-0.1.1.tgz
 ```
 
@@ -52,3 +52,18 @@ Zmap 0.1.2 preserves the authenticated identity object privately for continuing
 access checks and suppresses unchanged host elections. These fixes support the
 consumer's private grant adapter. They do not resolve all software-rendered Linux
 stalls; this remains an integration prerelease, not pilot certification.
+
+## v0.1.3 dev scheduling prerelease
+
+Simulation advances on a separate fixed-rate timer. Drawing uses the same current
+clock for interpolation, and pauses during recovery from a main-thread stall.
+The 250 ms withdrawal threshold and one-second healthy recovery window remain
+unchanged. Room changes respect that recovery window. No protocol or schema
+change is required; Avatar Studio remains 0.1.1.
+
+Validation: 111 unit/socket tests, TypeScript, independent packed consumer, and
+three local Chrome synchronization journeys pass, including sustained movement,
+rendered cadence, slow presentation and stalled-host handoff. The three-player
+action journey also passed locally. Linux software-rendered multiplayer remains
+an open qualification issue. This prerelease is for dev evaluation, not a claim
+of production, phone, or Linux rendering performance.
