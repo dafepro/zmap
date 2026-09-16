@@ -82,3 +82,26 @@ same art in isolated browser processes versus shared-process software rendering,
 then address the measured rendering/scheduling bottleneck without weakening the
 existing real-client release gate. The consuming diagnostic has restored normal
 MSAA settings; no quality override is part of qualification.
+
+## v0.1.3 dev evaluation follow-up
+
+The host-stall test now selects the elected host after both peers join; shader
+loading can legitimately change election order. A local movement regression also
+caught stale RAF timestamps after timer ticks. Rendering now samples
+`performance.now()` to use the simulation clock's current time.
+
+At release commit `540e0e4`, the independent packed consumer and 111 unit/socket
+tests pass. Local Chrome passed all three synchronization journeys (18.7 s), the
+three-player action journey, five cannon/performance checks, and both visual-kit
+cleanup checks (2.8 s). The initial static-bundle harness could not support those
+two source-module instrumentation checks; they passed through Vite after moving
+the temporary harness outside Documents. An esbuild stack sample showed its
+local hang while opening the parent Documents directory; no OS permission or
+security settings were changed.
+
+The complete Linux release run `35048915479` still reports 18 passing and 15
+failing browser tests. v0.1.3 is therefore an explicitly limited dev evaluation
+prerelease, not Linux or physical-device qualification. The consuming app pins
+both browser and relay to its immutable tarball and SHA-512 integrity. Dev update
+`35049549374` targets application `ab5d47c`; consult its completed result and the
+consuming app's maintained Team World guide for deployment verification.
