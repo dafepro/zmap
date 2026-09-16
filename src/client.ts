@@ -714,7 +714,7 @@ export class Zoomap {
       ...(x || y ? screenToWorld(x, y) : {}),
     });
   }
-  // Presentation can wait on the GPU without delaying a healthy simulation clock.
+  // Advance independently of presentation cadence; main-thread stalls still withdraw authority.
   private advance = () => {
     if (this.disposed || this.stopped) return;
     const time = performance.now();
@@ -822,7 +822,13 @@ export class Zoomap {
   private animate = (time: number) => {
     if (this.disposed || this.stopped) return;
     this.frame = requestAnimationFrame(this.animate);
-    if (document.hidden) return;
+    // Give an unhealthy event loop a quiet recovery window. Repeated GPU work
+    // here can otherwise prevent every visible peer from ever regaining host
+    // eligibility after initial shader compilation or a long graphics frame.
+    if (document.hidden || !this.hostHealthy) {
+      this.lastRender = time;
+      return;
+    }
     const elapsed = Math.max(
       0,
       Math.min(0.25, (time - this.lastRender) / 1000),
