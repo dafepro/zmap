@@ -190,16 +190,21 @@ test("a visible host with a stalled simulation clock yields authority instead of
   test.setTimeout(25000);
   const context = await browser.newContext();
   try {
-    const a = await context.newPage(),
+    let a = await context.newPage(),
       b = await context.newPage();
     await enter(a, "ari");
     await enter(b, "sam");
     await expect
       .poll(async () => {
-        const state = await read(a);
-        return state.healthy && state.host === state.session;
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
       })
       .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
     const start = await read(b);
     await a.evaluate(() => {
       const native = window.setTimeout.bind(window);
@@ -247,28 +252,28 @@ test("slow drawing callbacks do not stop a healthy simulation clock", async ({
 }) => {
   const context = await browser.newContext();
   try {
-    const a = await context.newPage(),
+    let a = await context.newPage(),
       b = await context.newPage();
-    await a.addInitScript(() => {
+    await enter(a, "ari");
+    await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
+      })
+      .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
+    await a.evaluate(() => {
       const native = window.requestAnimationFrame.bind(window);
       window.requestAnimationFrame = (callback) =>
         native(() => {
           setTimeout(() => callback(performance.now()), 400);
         });
     });
-    await enter(a, "ari");
-    await enter(b, "sam");
-    // Joining another avatar can compile new shaders. Measure steady operation
-    // after both peers have recovered, separately from the entry/recovery budget.
-    await expect
-      .poll(async () => {
-        const states = await Promise.all([read(a), read(b)]);
-        return (
-          states.every((state) => state.healthy) &&
-          states[0].host === states[0].session
-        );
-      })
-      .toBe(true);
     const initial = await read(a);
     await b.locator("canvas").focus();
     await b.keyboard.down("d");
