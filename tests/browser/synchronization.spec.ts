@@ -181,7 +181,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
   }
 });
 
-test("a visible host stalled to one frame per second yields authority instead of repeatedly rolling a friend back", async ({
+test("a visible host with a stalled simulation clock yields authority instead of repeatedly rolling a friend back", async ({
   browser,
 }) => {
   test.setTimeout(25000);
@@ -189,16 +189,22 @@ test("a visible host stalled to one frame per second yields authority instead of
   try {
     const a = await context.newPage(),
       b = await context.newPage();
-    await a.addInitScript(() => {
-      const native = window.requestAnimationFrame.bind(window);
-      window.requestAnimationFrame = (callback) =>
-        native(() => {
-          setTimeout(() => callback(performance.now()), 850);
-        });
-    });
     await enter(a, "ari");
     await enter(b, "sam");
     const start = await read(b);
+    await a.evaluate(() => {
+      const native = window.setTimeout.bind(window);
+      window.setTimeout = ((
+        callback: TimerHandler,
+        delay?: number,
+        ...args: unknown[]
+      ) =>
+        native(
+          callback,
+          Math.max(850, delay ?? 0),
+          ...args,
+        )) as typeof window.setTimeout;
+    });
     await b.locator("canvas").focus();
     await b.keyboard.down("d");
     await expect

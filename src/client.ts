@@ -110,6 +110,8 @@ export class Zoomap {
     timer: ReturnType<typeof setTimeout>;
   };
   private frame = 0;
+  private simulationTimer?: ReturnType<typeof setTimeout>;
+  private lastRender = 0;
   private retry?: ReturnType<typeof setTimeout>;
   private last = 0;
   private accumulator = 0;
@@ -243,13 +245,15 @@ export class Zoomap {
     this.stopped = false;
     this.started = performance.now();
     this.setStatus("connecting");
-    this.last = performance.now();
+    this.last = this.lastRender = performance.now();
+    this.simulationTimer = setTimeout(this.advance, 0);
     this.frame = requestAnimationFrame(this.animate);
     const ready = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.stopped = true;
         this.socket?.close();
         cancelAnimationFrame(this.frame);
+        clearTimeout(this.simulationTimer);
         this.setStatus("failed", "Room entry timed out");
       }, 10000);
       this.joining = { resolve, reject, timer };
@@ -710,13 +714,15 @@ export class Zoomap {
       ...(x || y ? screenToWorld(x, y) : {}),
     });
   }
-  private animate = (time: number) => {
-    if (this.disposed) return;
-    this.frame = requestAnimationFrame(this.animate);
-    const frameMs = Math.max(0, time - this.last);
-    const elapsed = Math.min(frameMs / 1000, 0.25);
+  // Presentation can wait on the GPU without delaying a healthy simulation clock.
+  private advance = () => {
+    if (this.disposed || this.stopped) return;
+    const time = performance.now();
+    this.simulationTimer = setTimeout(this.advance, STEP * 1000);
+    const intervalMs = Math.max(0, time - this.last);
+    const elapsed = Math.min(intervalMs / 1000, 0.25);
     this.last = time;
-    if (frameMs > 250 && !this.stopped) {
+    if (intervalMs > 250 && !this.stopped) {
       this.hostHealthy = false;
       this.healthySince = 0;
       this.accumulator = 0;
@@ -726,7 +732,7 @@ export class Zoomap {
           "paused",
           "Moving shared simulation to an active browser",
         );
-    } else if (!this.hostHealthy && frameMs < 100) {
+    } else if (!this.hostHealthy && intervalMs < 100) {
       if (!this.healthySince) this.healthySince = time;
       if (time - this.healthySince > 1000) this.hostHealthy = true;
     } else if (!this.hostHealthy) this.healthySince = 0;
@@ -812,8 +818,24 @@ export class Zoomap {
         this.accumulator -= STEP;
       }
     } else this.accumulator = 0;
+  };
+  private animate = (time: number) => {
+    if (this.disposed || this.stopped) return;
+    this.frame = requestAnimationFrame(this.animate);
+    if (document.hidden) return;
+    const elapsed = Math.max(
+      0,
+      Math.min(0.25, (time - this.lastRender) / 1000),
+    );
+    this.lastRender = time;
     if (this.local) {
-      const alpha = Math.max(0, Math.min(1, this.accumulator / STEP));
+      const alpha = Math.max(
+        0,
+        Math.min(
+          1,
+          (this.accumulator + Math.max(0, time - this.last) / 1000) / STEP,
+        ),
+      );
       const shownLocal = this.previousLocal
         ? interpolateBody(this.previousLocal, this.local, alpha)
         : { ...this.local };
@@ -869,6 +891,7 @@ export class Zoomap {
     this.stopped = true;
     this.presentation.reset();
     cancelAnimationFrame(this.frame);
+    clearTimeout(this.simulationTimer);
     clearTimeout(this.retry);
     this.clearInput();
     this.socket?.close();
