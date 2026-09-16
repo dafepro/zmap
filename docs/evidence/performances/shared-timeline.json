@@ -1,12 +1,12 @@
 {
   "beforeLoss": {
-    "tick": 333,
-    "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
-    "host": "3bf77c50-bf92-4bcc-a66e-7bc6ffaf1222",
+    "tick": 321,
+    "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
+    "host": "798ee038-37a6-429d-9ff7-0c5a3404ab7d",
     "body": {
-      "x": 0.03269629365092998,
+      "x": -0.003601854449979458,
       "y": 0,
-      "z": -5.032696293650931,
+      "z": -4.996398145550021,
       "vx": 0,
       "vy": 0,
       "vz": 0,
@@ -28,8 +28,8 @@
         "rebound-panel": 0,
         "wake-driver": 0
       },
-      "phaseStarted": 281,
-      "phaseUntil": 281,
+      "phaseStarted": 270,
+      "phaseUntil": 270,
       "lastHeldTick": 0,
       "target": null,
       "sequence": 6,
@@ -40,19 +40,19 @@
       "immuneUntil": 0,
       "performance": {
         "drawn": false,
-        "equipmentStarted": 281,
-        "equipmentUntil": 311,
+        "equipmentStarted": 270,
+        "equipmentUntil": 300,
         "equipmentFrom": 1,
         "emote": {
           "id": "dance",
-          "startedTick": 311,
-          "untilTick": 401,
+          "startedTick": 300,
+          "untilTick": 390,
           "redraw": true
         }
       }
     },
     "rendered": {
-      "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
+      "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
       "desired": "rebound-panel",
       "ready": true,
       "pending": false,
@@ -60,7 +60,7 @@
       "drawn": false,
       "emote": {
         "id": "dance",
-        "elapsed": 0.716300000000001,
+        "elapsed": 0.6954666666189837,
         "weight": 1,
         "waiting": false
       }
@@ -68,18 +68,18 @@
   },
   "accepted": {
     "id": "dance",
-    "startedTick": 311,
-    "untilTick": 401,
+    "startedTick": 300,
+    "untilTick": 390,
     "redraw": true
   },
   "recovered": {
-    "tick": 330,
-    "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
-    "host": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
+    "tick": 318,
+    "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
+    "host": "f36a0be1-aaa7-4f42-a802-010b27705641",
     "body": {
-      "x": 0.03269629365092998,
+      "x": -0.003601854449979458,
       "y": 0,
-      "z": -5.032696293650931,
+      "z": -4.996398145550021,
       "vx": 0,
       "vy": 0,
       "vz": 0,
@@ -101,8 +101,8 @@
         "rebound-panel": 0,
         "wake-driver": 0
       },
-      "phaseStarted": 281,
-      "phaseUntil": 281,
+      "phaseStarted": 270,
+      "phaseUntil": 270,
       "lastHeldTick": 0,
       "target": null,
       "sequence": 6,
@@ -113,19 +113,19 @@
       "immuneUntil": 0,
       "performance": {
         "drawn": false,
-        "equipmentStarted": 281,
-        "equipmentUntil": 311,
+        "equipmentStarted": 270,
+        "equipmentUntil": 300,
         "equipmentFrom": 1,
         "emote": {
           "id": "dance",
-          "startedTick": 311,
-          "untilTick": 401,
+          "startedTick": 300,
+          "untilTick": 390,
           "redraw": true
         }
       }
     },
     "rendered": {
-      "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
+      "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
       "desired": "rebound-panel",
       "ready": true,
       "pending": false,
@@ -133,21 +133,21 @@
       "drawn": false,
       "emote": {
         "id": "dance",
-        "elapsed": 0.6333333333333333,
+        "elapsed": 0.6,
         "weight": 1,
         "waiting": false
       }
     }
   },
-  "recoveryMs": 119,
+  "recoveryMs": 123,
   "final": {
-    "tick": 374,
-    "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
-    "host": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
+    "tick": 358,
+    "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
+    "host": "f36a0be1-aaa7-4f42-a802-010b27705641",
     "body": {
-      "x": 0.2919687800859974,
+      "x": 0.2815978806285947,
       "y": 0,
-      "z": -5.291968780086,
+      "z": -5.281597880628597,
       "vx": 0,
       "vy": 0,
       "vz": 0,
@@ -169,8 +169,8 @@
         "rebound-panel": 0,
         "wake-driver": 0
       },
-      "phaseStarted": 281,
-      "phaseUntil": 281,
+      "phaseStarted": 270,
+      "phaseUntil": 270,
       "lastHeldTick": 0,
       "target": null,
       "sequence": 6,
@@ -181,14 +181,14 @@
       "immuneUntil": 0,
       "performance": {
         "drawn": true,
-        "equipmentStarted": 332,
-        "equipmentUntil": 362,
+        "equipmentStarted": 320,
+        "equipmentUntil": 350,
         "equipmentFrom": 0,
         "emote": null
       }
     },
     "rendered": {
-      "session": "d3ce1e5e-73da-442c-a9da-9e4f77479a7a",
+      "session": "f36a0be1-aaa7-4f42-a802-010b27705641",
       "desired": "rebound-panel",
       "ready": true,
       "pending": false,
