@@ -326,6 +326,14 @@ export function createRoomService(options: ServiceOptions) {
               ws.close(4400, "This map requires performance-v1");
               return;
             }
+            if (
+              options.map.kickWindup &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("kick-windup-v1"))
+            ) {
+              ws.close(4400, "This map requires kick-windup-v1");
+              return;
+            }
             const identity = await readAdapter(
               options.authenticate(message.credential, message.room),
             );
@@ -450,6 +458,7 @@ export function createRoomService(options: ServiceOptions) {
               capabilities: [
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
                 ...(room.supportsSprint ? ["sprint-v1"] : []),
+                ...(options.map.kickWindup ? ["kick-windup-v1"] : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
                 ...(options.map.actionCatalog?.performance
                   ? ["performance-v1"]

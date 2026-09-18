@@ -56,6 +56,8 @@ export type WorldMap = {
   id: string;
   bounds: Rect;
   spawn: Vec3;
+  /** Seconds before kick contact; omitted/zero preserves immediate toy impulses. */
+  kickWindup?: number;
   surfaces: Surface[];
   blockers: Blocker[];
   toys: Toy[];
@@ -186,6 +188,10 @@ export function validateMap(
     r.width > 0 &&
     r.depth > 0;
   if (
+    (map.kickWindup !== undefined &&
+      (!finite(map.kickWindup) ||
+        map.kickWindup < 0 ||
+        map.kickWindup >= 0.5)) ||
     map.version !== 1 ||
     !validId(map.id) ||
     !rect(map.bounds) ||
@@ -407,7 +413,11 @@ export function movePlayer(
   body.vz = i.z * speed + (impulse?.z ?? 0);
   if (i.x || i.z) body.facing = Math.atan2(i.x, i.z);
   if (i.wave) body.gesture = 1.2;
-  if (i.kick) body.kick = 0.5;
+  if (
+    i.kick &&
+    (!map.kickWindup || (body.kick ?? 0) <= 0.5 - map.kickWindup + 1e-8)
+  )
+    body.kick = 0.5;
   else if (body.kick !== undefined)
     body.kick = Math.max(0, body.kick - Math.min(dt, 0.05));
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);
@@ -452,7 +462,10 @@ export function stepWorld(
     targets: heldTargets,
     finish,
   } = stepWorldObjects(map, state, objectBehaviors, items, catalog);
+  const kicking = new Set<string>();
+  const contact = 0.5 - (map.kickWindup ?? 0);
   for (const [id, b] of Object.entries(state.players)) {
+    const beforeKick = b.kick ?? 0;
     const action = state.actions?.players[id];
     if (actionMovementLocked(action))
       b.facing = Math.atan2(action!.aim.x, action!.aim.z);
@@ -465,6 +478,14 @@ export function stepWorld(
       catalog,
       actionMovementLocked(action) ? undefined : action?.impulse,
     );
+    if (
+      map.kickWindup
+        ? !actionMovementLocked(action) &&
+          beforeKick > contact + 1e-8 &&
+          (b.kick ?? 0) <= contact + 1e-8
+        : inputs[id]?.kick
+    )
+      kicking.add(id);
     if (action?.tool && action.performance?.drawn !== false) {
       if (!action.aimManual && !action.held && !actionMovementLocked(action))
         action.aim = { x: Math.sin(b.facing), z: Math.cos(b.facing) };
@@ -500,7 +521,7 @@ export function stepWorld(
         )
       )
         continue;
-      if (inputs[id]?.kick) {
+      if (kicking.has(id)) {
         b.vx = (dx / Math.max(0.1, distance)) * 8;
         b.vz = (dz / Math.max(0.1, distance)) * 8;
         b.vy = 3;

@@ -91,3 +91,48 @@ test("kick pose is shared, bounded and returns to rest", () => {
   s.players.player.kick = 100;
   assert.equal(validSimulation(s, courtyard, ["player"]), false);
 });
+
+test("authored kick windup keeps moving and releases once after a checkpoint handoff", () => {
+  const map = { ...courtyard, kickWindup: 0.2 };
+  let state = initialSimulation(map);
+  state.players.player = bodyAt({ x: 0, y: 0, z: 13 });
+  state.toys.ball = bodyAt({ x: 1.4, y: 0, z: 13 });
+  stepWorld(map, state, { player: { ...idleInput(), x: 1, kick: true } });
+  assert.equal(state.toys.ball.vx, 0, "the ball must wait for the strike");
+  for (let i = 0; i < 5; i++)
+    stepWorld(map, state, { player: { ...idleInput(), x: 1 } });
+  assert.equal(state.toys.ball.vx, 0);
+  assert.ok(state.players.player.x > 0.4, "windup must not lock movement");
+  state = JSON.parse(JSON.stringify(state));
+  stepWorld(map, state, { player: { ...idleInput(), x: 1 } });
+  assert.ok(state.toys.ball.vx > 7, "the restored windup releases at contact");
+  state.toys.ball = bodyAt({ x: state.players.player.x + 1, y: 0, z: 13 });
+  stepWorld(map, state, {});
+  assert.equal(state.toys.ball.vx, 0, "completed contact cannot fire again");
+});
+
+test("kick windup validates bounds and checks reach at contact", () => {
+  for (const kickWindup of [-1, 0.5, NaN, Infinity])
+    assert.throws(() => validateMap({ ...courtyard, kickWindup }));
+  const map = { ...courtyard, kickWindup: 0.2 };
+  validateMap(map);
+  const state = initialSimulation(map);
+  state.players.player = bodyAt({ x: 0, y: 0, z: 13 });
+  state.toys.ball = bodyAt({ x: 1, y: 0, z: 13 });
+  stepWorld(map, state, { player: { ...idleInput(), kick: true } });
+  state.toys.ball.x = 4;
+  for (let i = 0; i < 8; i++) stepWorld(map, state, {});
+  assert.equal(state.toys.ball.vx, 0);
+});
+
+test("held kick cannot postpone windup and immediate maps keep their legacy contact", () => {
+  for (const kickWindup of [0, 0.2]) {
+    const map = { ...courtyard, kickWindup };
+    const state = initialSimulation(map);
+    state.players.player = bodyAt({ x: 0, y: 0, z: 13 });
+    state.toys.ball = bodyAt({ x: 1.4, y: 0, z: 13 });
+    for (let i = 0; i < (kickWindup ? 7 : 1); i++)
+      stepWorld(map, state, { player: { ...idleInput(), kick: true } });
+    assert.ok(state.toys.ball.vx > 7);
+  }
+});

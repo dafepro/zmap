@@ -86,3 +86,16 @@ render callback drains due simulation steps before sampling the interpolated pos
 a delayed timer cannot pin healthy drawing frames to an exhausted pose interval.
 The timer remains active independently so slow presentation cannot stop simulation.
 Host health measures gaps in actual advancement, not lateness of one scheduler.
+
+## Optional kick contact timing (0.1.9)
+
+`WorldMap.kickWindup` optionally delays toy contact by fixed simulation seconds
+within `[0, 0.5)`. Omitted or zero keeps immediate kicks. A positive value requires
+`kick-windup-v1` on both client and room service; incompatible peers are rejected
+before joining. The half-second `Body.kick` timeline already travels in snapshots,
+so restoring a host checkpoint preserves pending contact without a second queue.
+Contact fires once when the remaining timer crosses `0.5 - kickWindup`, rounded
+up to the next fixed step. Reach, height and blockers are checked at contact.
+Repeated kick input during anticipation does not restart or postpone it. Walking,
+sprinting and steering continue throughout; use the shared timer to author a
+matching app-owned visual shot. The consumer owns any presentation-only recovery.

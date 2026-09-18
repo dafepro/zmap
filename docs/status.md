@@ -57,3 +57,18 @@ On Windows, 111 of 116 unit/socket tests pass; five example-store/server tests a
 the durable three-peer browser case fail at unsupported directory fsync (EPERM).
 These storage-platform failures are outside this scheduling change. Phone/display
 hardware ghosting is not proven resolved by browser transform measurements.
+
+## v0.1.9 optional kick wind-up
+
+Maps can opt into bounded kick contact timing while movement stays live. The
+existing shared kick timer carries anticipation across checkpoint restoration;
+contact fires once at the threshold with current reach/height/blocker checks.
+Repeated input cannot postpone anticipation. Existing maps keep immediate kicks.
+Positive wind-up requires the negotiated `kick-windup-v1` capability.
+
+Validation: all new timing/movement/restart and real-socket capability checks
+pass; 114 of 119 Windows unit/socket tests pass. The same five example directory
+fsync/storage tests fail with EPERM. Types, library build, changed-file formatting
+and an independent packed ESM/TypeScript/browser consumer pass. This prerelease
+supports the Zoomigo running-shot integration; it does not waive the existing
+Windows storage or software-renderer qualification gaps.

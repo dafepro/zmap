@@ -15,6 +15,7 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
   const map: WorldMap = {
     version: 1,
     id: "performance-sockets",
+    kickWindup: 0.2,
     bounds: { x: -5, z: -5, width: 10, depth: 10 },
     spawn: { x: 0, y: 0, z: 0 },
     surfaces: [
@@ -63,7 +64,7 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
     await service.close();
     await new Promise<void>((resolve) => http.close(() => resolve()));
   });
-  function connect(id: string, capable = true) {
+  function connect(id: string, capable = true, kickCapable = true) {
     const ws = new WebSocket(url),
       messages: any[] = [];
     sockets.push(ws);
@@ -76,7 +77,11 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
           version: 1,
           room: "test",
           credential: id,
-          capabilities: ["actions-v1", ...(capable ? ["performance-v1"] : [])],
+          capabilities: [
+            "actions-v1",
+            ...(capable ? ["performance-v1"] : []),
+            ...(kickCapable ? ["kick-windup-v1"] : []),
+          ],
         }),
       ),
     );
@@ -101,8 +106,10 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
     };
   }
   assert.equal(await connect("old", false).closed, 4400);
+  assert.equal(await connect("old-kick", true, false).closed, 4400);
   const a = connect("ari"),
     aid = (await a.wait("welcome")).session;
+  assert.ok((await a.wait("welcome")).capabilities.includes("kick-windup-v1"));
   const b = connect("sam"),
     bid = (await b.wait("welcome")).session;
   const room = await a.wait("room", (m) => m.roster.length === 2);
