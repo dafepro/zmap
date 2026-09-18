@@ -29,3 +29,17 @@ Cleanup validation passed 109 world unit/socket tests, 154 avatar unit tests, 30
 Real authentication and membership adapters; approved saved appearance resolution; transactional database persistence with bounded writes and unknown-outcome reconciliation; service restart and release deployment drills; graphics-context recovery; representative physical-phone load, thermal, input/entry/recovery percentiles, transport impairment and operating-cost measurements.
 
 The relay is currently one process/writer per room, with no distributed coordinator. Browser simulation is untrusted for rewards. Linked travel and map-generation switching are unfinished. No Canvas data migration or legacy fallback is required for this fresh v3.
+
+### September 17 shared kick patch
+
+Preview 0.1.7 adds optional bounded kick pose time to bodies, presentation and the
+relay's explicit field copy. Ten focused core, presentation and shared-performance
+socket tests pass, including peer snapshots and late join; the library TypeScript
+build passes. Preview 0.1.6 omitted relay forwarding and is superseded.
+
+The broad Windows engine test invocation is not green: this worktree's development
+avatar fixtures/helper and export do not match its installed development package,
+and ExampleStore directory fsync fails on Windows. Restore the matching development
+avatar setup and run the full suite on its supported filesystem before claiming
+whole-repository qualification. The consuming app tests its immutable packages
+separately; the focused patch results do not supersede the existing CI limitations.
