@@ -43,3 +43,17 @@ and ExampleStore directory fsync fails on Windows. Restore the matching developm
 avatar setup and run the full suite on its supported filesystem before claiming
 whole-repository qualification. The consuming app tests its immutable packages
 separately; the focused patch results do not supersede the existing CI limitations.
+
+## v0.1.8 scheduling correction
+
+A controlled 45 ms delay on every fifth simulation timer reproduced 26 held moving
+frames in the independent Chrome sprint test; draining due fixed steps before
+rendering reduced this to zero. Seven Chrome sprint/synchronization tests pass,
+including two-peer cadence, delayed traffic, roster changes, slow presentation and
+stalled-host recovery. Separate peer contexts avoid background-tab RAF throttling
+in the cadence test. Host withdrawal is tested by stalling both scheduling clocks.
+
+On Windows, 111 of 116 unit/socket tests pass; five example-store/server tests and
+the durable three-peer browser case fail at unsupported directory fsync (EPERM).
+These storage-platform failures are outside this scheduling change. Phone/display
+hardware ghosting is not proven resolved by browser transform measurements.

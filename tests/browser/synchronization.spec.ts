@@ -63,10 +63,11 @@ test("both actual peers retain sustained keyboard movement after release, latenc
 }) => {
   test.setTimeout(40000);
   const context = await browser.newContext(),
+    peerContext = await browser.newContext(),
     proxy = await networkProxy("ws://127.0.0.1:8790/room");
   try {
     const a = await context.newPage(),
-      b = await context.newPage();
+      b = await peerContext.newPage();
     await enter(a, "ari", proxy.url);
     await enter(b, "sam", proxy.url);
     const initial = await read(b),
@@ -133,6 +134,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
         minimumForwardStep: Math.min(...deltas.map((frame) => frame.forward)),
       };
     });
+    console.log("CADENCE", JSON.stringify(cadence));
     for (const result of cadence) {
       expect(result.frames).toBeGreaterThan(20);
       expect(result.movingFraction, JSON.stringify(cadence)).toBeGreaterThan(
@@ -182,11 +184,12 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     );
   } finally {
     await context.close();
+    await peerContext.close();
     await proxy.close();
   }
 });
 
-test("a visible host with a stalled simulation clock yields authority instead of repeatedly rolling a friend back", async ({
+test("a visible host with both scheduling clocks stalled yields authority instead of repeatedly rolling a friend back", async ({
   browser,
 }) => {
   test.setTimeout(25000);
@@ -210,6 +213,9 @@ test("a visible host with a stalled simulation clock yields authority instead of
     const start = await read(b);
     await a.evaluate(() => {
       const native = window.setTimeout.bind(window);
+      const frame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        frame(() => native(() => callback(performance.now()), 850));
       window.setTimeout = ((
         callback: TimerHandler,
         delay?: number,

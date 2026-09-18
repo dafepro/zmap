@@ -78,3 +78,11 @@ A roster update in the current host epoch merges membership into the running sim
 `Input.sprint?: boolean` is a held movement choice, not a one-shot action or additional speed scalar. Only boolean input is accepted as sprint intent, and the relay rejects sprint fields from clients that did not negotiate the capability. `world.setSprinting(boolean)` and `world.sprinting` provide the public controller interface; the focused canvas also supports held Shift. False or omitted input walks. Prediction, acknowledged replay and host handoff preserve the same input, while stale held movement expires after 250 ms. Action movement locks still override either pace.
 
 Kick presentation (0.1.7): `Body.kick` is optional seconds remaining in a half-second kick pose. It is replicated, bounded by snapshot validation, advances with movement prediction, and interpolates down without delaying a new kick. Apps can animate their own rigs; ball impulse rules are unchanged.
+
+### Simulation and display scheduling
+
+The timer and animation-frame callbacks consume one fixed-step accumulator. A
+render callback drains due simulation steps before sampling the interpolated pose;
+a delayed timer cannot pin healthy drawing frames to an exhausted pose interval.
+The timer remains active independently so slow presentation cannot stop simulation.
+Host health measures gaps in actual advancement, not lateness of one scheduler.

@@ -729,10 +729,10 @@ export class Zoomap {
     });
   }
   // Advance independently of presentation cadence; main-thread stalls still withdraw authority.
-  private advance = () => {
+  private advance = (schedule = true) => {
     if (this.disposed || this.stopped) return;
     const time = performance.now();
-    this.simulationTimer = setTimeout(this.advance, STEP * 1000);
+    if (schedule) this.simulationTimer = setTimeout(this.advance, STEP * 1000);
     const intervalMs = Math.max(0, time - this.last);
     const elapsed = Math.min(intervalMs / 1000, 0.25);
     this.last = time;
@@ -839,6 +839,9 @@ export class Zoomap {
     const time = performance.now();
     if (this.disposed || this.stopped) return;
     this.frame = requestAnimationFrame(this.animate);
+    // A late timer must not leave RAF clamped at the end of its pose interval.
+    // Both clocks consume the same accumulator; physics still advances only at STEP.
+    this.advance(false);
     // Give an unhealthy event loop a quiet recovery window. Repeated GPU work
     // here can otherwise prevent every visible peer from ever regaining host
     // eligibility after initial shader compilation or a long graphics frame.

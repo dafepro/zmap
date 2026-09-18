@@ -258,3 +258,68 @@ test("same-epoch roster changes cannot rewind the current host's sprint or repla
     await proxy.close();
   }
 });
+
+test("late simulation timers cannot hold a moving presentation frame", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const original = window.setTimeout.bind(window);
+    let count = 0;
+    window.setTimeout = ((
+      callback: TimerHandler,
+      delay?: number,
+      ...args: unknown[]
+    ) =>
+      original(
+        callback,
+        delay && Math.abs(delay - 1000 / 30) < 0.01 && ++count % 5 === 0
+          ? delay + 45
+          : delay,
+        ...args,
+      )) as typeof setTimeout;
+  });
+  await enter(page, "ari");
+  await page.evaluate(() => {
+    const world = (window as any).zoomapActionYard.world;
+    const original = world.view.render.bind(world.view);
+    (window as any).motionFrames = [];
+    world.view.render = (...args: any[]) => {
+      original(...args);
+      const body = args[3];
+      (window as any).motionFrames.push({
+        time: performance.now(),
+        x: body.x,
+        z: body.z,
+        speed: Math.hypot(body.vx, body.vz),
+      });
+    };
+  });
+  await page.locator("canvas").focus();
+  await page.keyboard.down("Shift");
+  await page.keyboard.down("d");
+  await page.waitForTimeout(1000);
+  await page.keyboard.up("d");
+  await page.keyboard.up("Shift");
+  const result = await page.evaluate(() => {
+    const frames = (window as any).motionFrames;
+    let moving = 0,
+      holds = 0;
+    for (let i = 1; i < frames.length; i++) {
+      const a = frames[i - 1],
+        b = frames[i];
+      if (
+        a.speed < 1 ||
+        b.speed < 1 ||
+        b.time - a.time < 4 ||
+        b.time - a.time > 100
+      )
+        continue;
+      moving++;
+      if (Math.hypot(b.x - a.x, b.z - a.z) < 0.00001) holds++;
+    }
+    return { moving, holds };
+  });
+  console.log("TIMER_LATENESS", result);
+  expect(result.moving).toBeGreaterThan(20);
+  expect(result.holds).toBe(0);
+});
