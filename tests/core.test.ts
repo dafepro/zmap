@@ -77,3 +77,17 @@ test("launched toys collide with bridge underside instead of passing through it"
   }
   assert.ok(bounced);
 });
+
+test("kick pose is shared, bounded and returns to rest", () => {
+  const s = initialSimulation(courtyard);
+  s.players.player = bodyAt(courtyard.spawn);
+  stepWorld(courtyard, s, { player: { ...idleInput(), kick: true } });
+  assert.ok(s.players.player.kick! > 0.4);
+  assert.equal(validSimulation(s, courtyard, ["player"]), true);
+  const roundTrip = JSON.parse(JSON.stringify(s));
+  assert.equal(roundTrip.players.player.kick, s.players.player.kick);
+  for (let i = 0; i < 20; i++) stepWorld(courtyard, s, {});
+  assert.equal(s.players.player.kick, 0);
+  s.players.player.kick = 100;
+  assert.equal(validSimulation(s, courtyard, ["player"]), false);
+});

@@ -81,6 +81,8 @@ export type Body = Vec3 & {
   vz: number;
   facing: number;
   gesture: number;
+  /** Seconds remaining in the shared half-second kick pose. */
+  kick?: number;
   /** Increment on an intentional discontinuity; display must not interpolate across it. */
   teleportEpoch?: number;
 };
@@ -405,6 +407,9 @@ export function movePlayer(
   body.vz = i.z * speed + (impulse?.z ?? 0);
   if (i.x || i.z) body.facing = Math.atan2(i.x, i.z);
   if (i.wave) body.gesture = 1.2;
+  if (i.kick) body.kick = 0.5;
+  else if (body.kick !== undefined)
+    body.kick = Math.max(0, body.kick - Math.min(dt, 0.05));
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);
 }
 export function initialSimulation(
@@ -603,6 +608,8 @@ export function validSimulation(
     b.y <= 30 &&
     b.gesture >= 0 &&
     b.gesture <= 2 &&
+    (b.kick === undefined ||
+      (finite(b.kick) && b.kick >= 0 && b.kick <= 0.5)) &&
     (b.teleportEpoch === undefined ||
       (Number.isSafeInteger(b.teleportEpoch) && b.teleportEpoch >= 0));
   return (
