@@ -579,6 +579,7 @@ export function createRoomService(options: ServiceOptions) {
               vz: b.vz,
               facing: b.facing,
               gesture: b.gesture,
+              ...(b.kick === undefined ? {} : { kick: b.kick }),
               ...(b.teleportEpoch === undefined
                 ? {}
                 : { teleportEpoch: b.teleportEpoch }),

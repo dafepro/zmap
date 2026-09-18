@@ -135,13 +135,19 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
   );
   stepWorld(map, state, inputs, [], [], [emote]);
   const accepted = structuredClone(state.actions!.players[bid].performance);
+  state.players[aid].kick = 0.4;
   a.send({ type: "snapshot", epoch: room.epoch, state });
-  await b.wait("snapshot", (m) => m.state.tick === state.tick);
+  const kickFrame = await b.wait(
+    "snapshot",
+    (m) => m.state.tick === state.tick,
+  );
+  assert.equal(kickFrame.state.players[aid].kick, 0.4);
   const c = connect("jo"),
     welcome = await c.wait("welcome"),
     cid = welcome.session;
   const joined = await c.wait("room", (m) => m.roster.length === 3);
   assert.deepEqual(joined.state.actions.players[bid].performance, accepted);
+  assert.equal(joined.state.players[aid].kick, 0.4);
   assert.ok(
     joined.state.tick < accepted!.emote!.startedTick,
     "late join sees the active stow before the clip",
