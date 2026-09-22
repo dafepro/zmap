@@ -276,6 +276,9 @@ export class Zoomap {
             "input-ack-v1",
             "sprint-v1",
             ...(this.options.map.kickWindup ? ["kick-windup-v1"] : []),
+            ...(this.options.map.toys.some((toy) => toy.strike)
+              ? ["strike-v1"]
+              : []),
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
             ...(this.options.map.actionCatalog?.performance
               ? ["performance-v1"]
@@ -305,6 +308,8 @@ export class Zoomap {
             !m.capabilities.includes("sprint-v1") ||
             (this.options.map.kickWindup &&
               !m.capabilities.includes("kick-windup-v1")) ||
+            (this.options.map.toys.some((toy) => toy.strike) &&
+              !m.capabilities.includes("strike-v1")) ||
             (this.options.map.actionCatalog?.interactions &&
               !m.capabilities.includes("object-interactions-v1")) ||
             (this.options.map.actionCatalog?.performance &&

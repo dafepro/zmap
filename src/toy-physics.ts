@@ -355,7 +355,11 @@ export function advanceToys(
           b.vy - slope * b.vz <= 0.2;
       if (grounded) {
         b.vz -= ((((GRAVITY * 5) / 7) * slope) / (1 + slope * slope)) * h;
-        rollingResistance(b, support.rollingResistance ?? 0.65, h);
+        rollingResistance(
+          b,
+          toy.rollingResistance ?? support.rollingResistance ?? 0.65,
+          h,
+        );
         b.vy = slope * b.vz;
       } else {
         const drag = Math.exp(-0.04 * h);

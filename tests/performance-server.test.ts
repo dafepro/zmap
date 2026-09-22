@@ -22,7 +22,16 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
       { id: "floor", x: -5, z: -5, width: 10, depth: 10, y: 0, thickness: 0.2 },
     ],
     blockers: [],
-    toys: [],
+    toys: [
+      {
+        id: "ball",
+        home: { x: 1, y: 0, z: 0 },
+        radius: 0.3,
+        color: "#ffffff",
+        sleep: "home",
+        strike: { speed: 5.5, closeLift: 5.8 },
+      },
+    ],
     triggers: [],
     placementZones: [],
     protectedZones: [],
@@ -64,7 +73,12 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
     await service.close();
     await new Promise<void>((resolve) => http.close(() => resolve()));
   });
-  function connect(id: string, capable = true, kickCapable = true) {
+  function connect(
+    id: string,
+    capable = true,
+    kickCapable = true,
+    strikeCapable = true,
+  ) {
     const ws = new WebSocket(url),
       messages: any[] = [];
     sockets.push(ws);
@@ -81,6 +95,7 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
             "actions-v1",
             ...(capable ? ["performance-v1"] : []),
             ...(kickCapable ? ["kick-windup-v1"] : []),
+            ...(strikeCapable ? ["strike-v1"] : []),
           ],
         }),
       ),
@@ -107,9 +122,11 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
   }
   assert.equal(await connect("old", false).closed, 4400);
   assert.equal(await connect("old-kick", true, false).closed, 4400);
+  assert.equal(await connect("old-strike", true, true, false).closed, 4400);
   const a = connect("ari"),
     aid = (await a.wait("welcome")).session;
   assert.ok((await a.wait("welcome")).capabilities.includes("kick-windup-v1"));
+  assert.ok((await a.wait("welcome")).capabilities.includes("strike-v1"));
   const b = connect("sam"),
     bid = (await b.wait("welcome")).session;
   const room = await a.wait("room", (m) => m.roster.length === 2);
@@ -143,18 +160,29 @@ test("emotes retain an approved timeline across late join and host loss; legacy 
   stepWorld(map, state, inputs, [], [], [emote]);
   const accepted = structuredClone(state.actions!.players[bid].performance);
   state.players[aid].kick = 0.4;
+  state.players[aid].strike = {
+    toy: "ball",
+    kind: "header",
+    target: { x: 0.5, y: 2, z: 0 },
+    jumpHeight: 0.44,
+  };
   a.send({ type: "snapshot", epoch: room.epoch, state });
   const kickFrame = await b.wait(
     "snapshot",
     (m) => m.state.tick === state.tick,
   );
   assert.equal(kickFrame.state.players[aid].kick, 0.4);
+  assert.deepEqual(
+    kickFrame.state.players[aid].strike,
+    state.players[aid].strike,
+  );
   const c = connect("jo"),
     welcome = await c.wait("welcome"),
     cid = welcome.session;
   const joined = await c.wait("room", (m) => m.roster.length === 3);
   assert.deepEqual(joined.state.actions.players[bid].performance, accepted);
   assert.equal(joined.state.players[aid].kick, 0.4);
+  assert.deepEqual(joined.state.players[aid].strike, state.players[aid].strike);
   assert.ok(
     joined.state.tick < accepted!.emote!.startedTick,
     "late join sees the active stow before the clip",

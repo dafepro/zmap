@@ -14,6 +14,40 @@ Existing floor resistance continues to act on the whole rolling velocity vector.
 
 The authored room limit remains five toys. This is a bounded shared toy simulation, with spherical toy collision shapes; arbitrary rigid mesh simulation is outside this interface.
 
+## Timed contextual strikes (0.1.10)
+
+An app may opt a toy into `strike: { speed, closeLift }` and set a positive
+`map.kickWindup`. This selects the ball's horizontal ground speed (metres per
+second) and the vertical velocity of the closest grounded strike. Other toys
+retain the previous 8 m/s, 3 m/s kick. `Toy.rollingResistance` optionally
+overrides a surface's ground deceleration for one toy; `Toy.restitution` still
+controls bounce. The room negotiates `strike-v1` as well as `kick-windup-v1`.
+
+At the kick press, the shared simulation predicts the toy centre at contact
+from its current velocity and gravity and selects a target in reach. It refreshes
+that target during windup. A header anticipates a 0.44 m physical jump; a
+bicycle kick anticipates 0.69 m. Launch speed is `sqrt(2 × 18 × jumpHeight)`.
+The player keeps normal steering and collision, so a ceiling can shorten a
+jump. At the exact existing contact tick, the _actual_ toy centre and player
+position decide the result. A ball crossing 1.0 m above the player's supporting
+surface switches from a ground kick to a header; above 2.35 m it switches to a
+bicycle kick, and above 3.2 m it is unreachable. Aerial contact requires a
+committed jump, at least 0.12 m of actual lift, horizontal distance at most
+1.1 m, and the toy centre within 0.55 m of the 1.55 m head contact point or
+0.5 m of the 2.15 m overhead boot point. Ground reach is 1.65 m. Height-aware
+blockers still reject contact. A miss does not grant an impulse.
+
+For ground contact, vertical speed blends from `closeLift` at 0.65 m or nearer
+to 0.25 m at 1.3 m or farther, creating a close loft and a distant low roll.
+Headers use 0.82 × the authored horizontal speed and 2.2 m/s upward; bicycle
+kicks use 1.15 × and 4.2 m/s upward. The shot points from the player's actual
+contact position to the ball; a ball directly over the player uses facing.
+The player snapshot carries `strike: { toy, kind, target, jumpHeight }`; target
+is a world-space sphere centre updated during anticipation and fixed at actual
+contact. It is bounded and copied by the relay through late join and host
+transfer. The app's rig can aim a head or boot at this target and use the same
+physical body height; it must not create a second world-space jump.
+
 ## Wake Driver accepted action sequence
 
 `PlayerActionState.phaseStarted` is the tick when its current phase began. `phaseUntil` is the next fixed transition or the airborne safety deadline. Both are serialized and validated with the rest of the checkpoint. `WAKE_MOTION` contains the fixed physical timings and launch speeds.

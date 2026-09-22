@@ -334,6 +334,14 @@ export function createRoomService(options: ServiceOptions) {
               ws.close(4400, "This map requires kick-windup-v1");
               return;
             }
+            if (
+              options.map.toys.some((toy) => toy.strike) &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("strike-v1"))
+            ) {
+              ws.close(4400, "This map requires strike-v1");
+              return;
+            }
             const identity = await readAdapter(
               options.authenticate(message.credential, message.room),
             );
@@ -459,6 +467,9 @@ export function createRoomService(options: ServiceOptions) {
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
                 ...(room.supportsSprint ? ["sprint-v1"] : []),
                 ...(options.map.kickWindup ? ["kick-windup-v1"] : []),
+                ...(options.map.toys.some((toy) => toy.strike)
+                  ? ["strike-v1"]
+                  : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
                 ...(options.map.actionCatalog?.performance
                   ? ["performance-v1"]
@@ -589,6 +600,9 @@ export function createRoomService(options: ServiceOptions) {
               facing: b.facing,
               gesture: b.gesture,
               ...(b.kick === undefined ? {} : { kick: b.kick }),
+              ...(b.strike === undefined
+                ? {}
+                : { strike: structuredClone(b.strike) }),
               ...(b.teleportEpoch === undefined
                 ? {}
                 : { teleportEpoch: b.teleportEpoch }),
