@@ -323,6 +323,7 @@ export function advanceToys(
     }
   }
   const radius = Math.min(...ordered.map((t) => t.radius)),
+    maxGravity = Math.max(...ordered.map((t) => t.gravity ?? GRAVITY)),
     speed = Math.max(
       ...ordered.map((t) =>
         Math.hypot(bodies[t.id].vx, bodies[t.id].vy, bodies[t.id].vz),
@@ -330,7 +331,7 @@ export function advanceToys(
     ),
     count = Math.max(
       4,
-      Math.ceil(((speed + GRAVITY * dt) * dt) / (radius * 0.2)),
+      Math.ceil(((speed + maxGravity * dt) * dt) / (radius * 0.2)),
     ),
     h = dt / count;
   for (let step = 0; step < count; step++) {
@@ -347,6 +348,7 @@ export function advanceToys(
         continue;
       }
       const b = bodies[toy.id],
+        gravity = toy.gravity ?? GRAVITY,
         support = supportAt(map, b.x, b.z, b.y + 0.025),
         slope = support?.slope ?? 0,
         grounded =
@@ -354,7 +356,7 @@ export function advanceToys(
           Math.abs(b.y - top(support, b.z)) < 0.0001 &&
           b.vy - slope * b.vz <= 0.2;
       if (grounded) {
-        b.vz -= ((((GRAVITY * 5) / 7) * slope) / (1 + slope * slope)) * h;
+        b.vz -= ((((gravity * 5) / 7) * slope) / (1 + slope * slope)) * h;
         rollingResistance(
           b,
           toy.rollingResistance ?? support.rollingResistance ?? 0.65,
@@ -365,7 +367,7 @@ export function advanceToys(
         const drag = Math.exp(-0.04 * h);
         b.vx *= drag;
         b.vz *= drag;
-        b.vy -= GRAVITY * h;
+        b.vy -= gravity * h;
       }
       b.x += b.vx * h;
       b.y += b.vy * h;

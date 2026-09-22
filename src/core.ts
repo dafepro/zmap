@@ -51,6 +51,8 @@ export type Toy = {
   mass?: number;
   /** Optional ball-specific ground deceleration in m/s². */
   rollingResistance?: number;
+  /** Optional ball-specific gravity in m/s²; other toys retain 18. */
+  gravity?: number;
   /** Optional timed, height-aware strike for a ball; other toys retain legacy kicks. */
   strike?: StrikeProfile;
 };
@@ -143,6 +145,10 @@ export const STEP = 1 / 30;
 /** Shared movement tuning in metres per second, used by prediction and authority. */
 export const WALK_SPEED = 2.2;
 export const SPRINT_SPEED = 5.4;
+export const requiresBallFlightV1 = (map: WorldMap) =>
+  map.toys.some(
+    (toy) => toy.gravity !== undefined || toy.strike?.closeSpeed !== undefined,
+  );
 export const idleInput = (): Input => ({
   x: 0,
   z: 0,
@@ -263,12 +269,18 @@ export function validateMap(
       !finite(t.rollingResistance ?? 0.65) ||
       (t.rollingResistance ?? 0.65) < 0 ||
       (t.rollingResistance ?? 0.65) > 10 ||
+      !finite(t.gravity ?? 18) ||
+      (t.gravity ?? 18) < 1 ||
+      (t.gravity ?? 18) > 30 ||
       (t.strike !== undefined &&
         (!map.kickWindup ||
           !t.strike ||
           !finite(t.strike.speed) ||
           t.strike.speed <= 0 ||
           t.strike.speed > 20 ||
+          !finite(t.strike.closeSpeed ?? t.strike.speed) ||
+          (t.strike.closeSpeed ?? t.strike.speed) <= 0 ||
+          (t.strike.closeSpeed ?? t.strike.speed) > 20 ||
           !finite(t.strike.closeLift) ||
           t.strike.closeLift < 0 ||
           t.strike.closeLift > 12))
@@ -523,6 +535,7 @@ export function stepWorld(
               toy.radius,
               top(support, b.z),
               map.kickWindup!,
+              toy.gravity ?? 18,
             ),
           )
           .filter((strike): strike is StrikeState => !!strike)
@@ -548,6 +561,7 @@ export function stepWorld(
           toy.radius,
           top(support, b.z),
           (b.kick ?? 0) - contact,
+          toy.gravity ?? 18,
         );
         if (latest) b.strike = { ...latest, jumpHeight: b.strike.jumpHeight };
       }

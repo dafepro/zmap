@@ -14,7 +14,7 @@ Existing floor resistance continues to act on the whole rolling velocity vector.
 
 The authored room limit remains five toys. This is a bounded shared toy simulation, with spherical toy collision shapes; arbitrary rigid mesh simulation is outside this interface.
 
-## Timed contextual strikes (0.1.10)
+## Timed contextual strikes (0.1.10; per-ball flight in 0.1.11)
 
 An app may opt a toy into `strike: { speed, closeLift }` and set a positive
 `map.kickWindup`. This selects the ball's horizontal ground speed (metres per
@@ -47,6 +47,16 @@ is a world-space sphere centre updated during anticipation and fixed at actual
 contact. It is bounded and copied by the relay through late join and host
 transfer. The app's rig can aim a head or boot at this target and use the same
 physical body height; it must not create a second world-space jump.
+
+`Toy.gravity` (1–30 m/s²) optionally sets that toy's airborne and downhill
+acceleration; omitted toys keep 18 m/s². Strike anticipation uses the same
+authored gravity so a timed header predicts the correct contact height.
+`strike.closeSpeed` (greater than zero, up to 20 m/s) optionally slows
+horizontal travel at 0.65 m or nearer, blending into `strike.speed` at 1.3 m.
+Omitting it preserves the existing horizontal speed. These fields negotiate
+`ball-flight-v1` when present; older clients cannot silently join a room that
+uses them. The host applies any live changes to its shared simulation map;
+applications own their own tuning UI and host handoff policy.
 
 ## Wake Driver accepted action sequence
 

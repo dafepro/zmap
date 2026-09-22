@@ -16,6 +16,7 @@ import {
   validateMap,
   validateCatalog,
   validateDurableState,
+  requiresBallFlightV1,
   type WorldMap,
   type ItemType,
   type Identity,
@@ -342,6 +343,14 @@ export function createRoomService(options: ServiceOptions) {
               ws.close(4400, "This map requires strike-v1");
               return;
             }
+            if (
+              requiresBallFlightV1(options.map) &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("ball-flight-v1"))
+            ) {
+              ws.close(4400, "This map requires ball-flight-v1");
+              return;
+            }
             const identity = await readAdapter(
               options.authenticate(message.credential, message.room),
             );
@@ -469,6 +478,9 @@ export function createRoomService(options: ServiceOptions) {
                 ...(options.map.kickWindup ? ["kick-windup-v1"] : []),
                 ...(options.map.toys.some((toy) => toy.strike)
                   ? ["strike-v1"]
+                  : []),
+                ...(requiresBallFlightV1(options.map)
+                  ? ["ball-flight-v1"]
                   : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
                 ...(options.map.actionCatalog?.performance

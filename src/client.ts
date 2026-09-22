@@ -20,6 +20,7 @@ import {
   stepWorld,
   validateMap,
   validateCatalog,
+  requiresBallFlightV1,
   type WorldMap,
   type ItemType,
   type Identity,
@@ -279,6 +280,9 @@ export class Zoomap {
             ...(this.options.map.toys.some((toy) => toy.strike)
               ? ["strike-v1"]
               : []),
+            ...(requiresBallFlightV1(this.options.map)
+              ? ["ball-flight-v1"]
+              : []),
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
             ...(this.options.map.actionCatalog?.performance
               ? ["performance-v1"]
@@ -310,6 +314,8 @@ export class Zoomap {
               !m.capabilities.includes("kick-windup-v1")) ||
             (this.options.map.toys.some((toy) => toy.strike) &&
               !m.capabilities.includes("strike-v1")) ||
+            (requiresBallFlightV1(this.options.map) &&
+              !m.capabilities.includes("ball-flight-v1")) ||
             (this.options.map.actionCatalog?.interactions &&
               !m.capabilities.includes("object-interactions-v1")) ||
             (this.options.map.actionCatalog?.performance &&

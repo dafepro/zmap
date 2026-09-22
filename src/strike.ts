@@ -1,6 +1,10 @@
 import type { Body, Vec3 } from "./core.js";
 
-export type StrikeProfile = { speed: number; closeLift: number };
+export type StrikeProfile = {
+  speed: number;
+  closeLift: number;
+  closeSpeed?: number;
+};
 export type StrikeKind = "ground" | "header" | "bicycle";
 export type StrikeState = {
   toy: string;
@@ -29,6 +33,7 @@ export function anticipateStrike(
   radius: number,
   ground: number,
   untilContact: number,
+  gravity = GRAVITY,
 ): StrikeState | undefined {
   const future = Math.max(0, untilContact);
   const target = {
@@ -36,7 +41,7 @@ export function anticipateStrike(
     y:
       Math.max(
         ground,
-        ball.y + ball.vy * future - (GRAVITY / 2) * future ** 2,
+        ball.y + ball.vy * future - (gravity / 2) * future ** 2,
       ) + radius,
     z: ball.z + ball.vz * future,
   };
@@ -81,13 +86,16 @@ export function resolveStrike(
     distance > 0.1
       ? { x: dx / distance, z: dz / distance }
       : { x: Math.sin(player.facing), z: Math.cos(player.facing) };
+  const closeness = Math.max(0, Math.min(1, (FAR - distance) / (FAR - CLOSE)));
+  const travelSpeed =
+    profile.speed +
+    ((profile.closeSpeed ?? profile.speed) - profile.speed) * closeness;
   const speed =
     kind === "header"
-      ? profile.speed * 0.82
+      ? travelSpeed * 0.82
       : kind === "bicycle"
-        ? profile.speed * 1.15
-        : profile.speed;
-  const closeness = Math.max(0, Math.min(1, (FAR - distance) / (FAR - CLOSE)));
+        ? travelSpeed * 1.15
+        : travelSpeed;
   const lift =
     kind === "header"
       ? 2.2
