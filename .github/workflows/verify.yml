@@ -17,8 +17,8 @@ jobs:
       ZMAP_TEST_ACTION_PORT: "18791"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      # Checkout's submodule auth assumes HOME controls global Git config.
+      - run: git submodule update --init --recursive --depth=1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
