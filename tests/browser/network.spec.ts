@@ -1,3 +1,4 @@
+import { relayURL } from "../helpers/fixture-ports";
 import { test, expect } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 import { writeFile } from "node:fs/promises";
@@ -5,7 +6,7 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
   browser,
 }) => {
   test.setTimeout(45000);
-  const proxy = await networkProxy("ws://127.0.0.1:8788/room");
+  const proxy = await networkProxy(relayURL);
   const context = await browser.newContext();
   const pages = [];
   try {

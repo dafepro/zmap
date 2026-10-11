@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 
@@ -37,7 +38,7 @@ test("Shift sprint and release agree under shaped traffic, survive host loss, an
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
   });
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room");
+  const proxy = await networkProxy(actionURL);
   try {
     const a = await context.newPage(),
       b = await context.newPage();
@@ -195,7 +196,7 @@ test("same-epoch roster changes cannot rewind the current host's sprint or repla
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
   });
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room");
+  const proxy = await networkProxy(actionURL);
   try {
     const a = await context.newPage(),
       b = await context.newPage();

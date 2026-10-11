@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { networkProxy } from "../helpers/network-proxy";
@@ -42,7 +43,7 @@ test("click to walk persists under shaped traffic; new targets redirect and Esca
   browser,
 }) => {
   test.setTimeout(40000);
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room");
+  const proxy = await networkProxy(actionURL);
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
   });

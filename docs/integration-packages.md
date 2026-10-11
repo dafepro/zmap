@@ -67,3 +67,19 @@ rendered cadence, slow presentation and stalled-host handoff. The three-player
 action journey also passed locally. Linux software-rendered multiplayer remains
 an open qualification issue. This prerelease is for dev evaluation, not a claim
 of production, phone, or Linux rendering performance.
+
+## v0.1.12 input recovery prerelease
+
+This release retains the published 0.1.11 baseline and separates unconsumed
+kick/wave edges from the 250 ms held-movement deadline. The real relay regression
+first reproduced a dropped kick after delayed handoff, then verified zero stale
+movement, consuming-snapshot acknowledgement, no replay and departure cleanup.
+The fixed-step client applies the same expiry rule. Health and lease thresholds,
+wire capabilities and durable policy are unchanged. This does not qualify the
+Zoomigo campus on software WebGL or physical phones.
+
+The release promotes the already-published 0.1.11 source baseline (tag
+`7c9aac78cf0215e065b882cd13f3c1f84dee6144`) plus this recovery fix to `main`.
+That tag is 23 commits ahead of, and descends from, the prior `main`
+`331ef1454fcf44a34b5a8ff5cb298e1a10565aa5`; it is already the Zoomigo consumer's
+runtime baseline. It does not include the newer experimental physics branch.

@@ -11,6 +11,7 @@ import {
   bodyAt,
   initialSimulation,
   normalizeInput,
+  expireHeldInput,
   validId,
   validSimulation,
   validateMap,
@@ -183,22 +184,23 @@ export function createRoomService(options: ServiceOptions) {
     durable: layout(room.durable),
     inputAcks: room.inputAcks,
     inputs: Object.fromEntries(
-      [...room.peers.values()]
-        .filter((peer) => peer.input && Date.now() - peer.inputAt <= 250)
-        .map((peer) => [
-          peer.id,
-          {
-            input: room.acknowledgesInput
-              ? {
-                  ...peer.input!,
-                  kick: peer.kickSequence > (room.inputAcks[peer.id] ?? 0),
-                  wave: peer.waveSequence > (room.inputAcks[peer.id] ?? 0),
-                }
-              : peer.input,
-            sequence: peer.inputSequence,
-            ageMs: Date.now() - peer.inputAt,
-          },
-        ]),
+      [...room.peers.values()].flatMap((peer) => {
+        if (!peer.input) return [];
+        const ageMs = Date.now() - peer.inputAt;
+        let input = room.acknowledgesInput
+          ? {
+              ...peer.input,
+              kick: peer.kickSequence > (room.inputAcks[peer.id] ?? 0),
+              wave: peer.waveSequence > (room.inputAcks[peer.id] ?? 0),
+            }
+          : peer.input;
+        if (ageMs > 250) {
+          if (!room.acknowledgesInput || (!input.kick && !input.wave))
+            return [];
+          input = expireHeldInput(input);
+        }
+        return [[peer.id, { input, sequence: peer.inputSequence, ageMs }]];
+      }),
     ),
     ...(options.map.actionCatalog
       ? { actionCommands: room.pendingActions }

@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { networkProxy } from "../helpers/network-proxy";
@@ -50,7 +51,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
   browser,
 }) => {
   test.setTimeout(65000);
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room"),
+  const proxy = await networkProxy(actionURL),
     context = await browser.newContext(),
     errors: string[] = [];
   try {

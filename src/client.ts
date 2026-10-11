@@ -13,6 +13,7 @@ import {
 import {
   STEP,
   idleInput,
+  expireHeldInput,
   initialSimulation,
   movePlayer,
   normalizeInput,
@@ -797,7 +798,10 @@ export class Zoomap {
         if (this.host === this.session) {
           for (const id of Object.keys(this.inputs))
             if (time - (this.inputAt[id] ?? 0) > 250)
-              this.inputs[id] = idleInput();
+              this.inputs[id] =
+                (this.inputSequences[id] ?? 0) > (this.inputAcks[id] ?? 0)
+                  ? expireHeldInput(this.inputs[id])
+                  : idleInput();
           // Consume this exact local sample before acknowledging its sequence. The relay echo
           // can arrive later; it must not reintroduce an already-consumed kick or wave.
           const pendingLocal =

@@ -155,6 +155,12 @@ export const idleInput = (): Input => ({
   kick: false,
   wave: false,
 });
+/** Held movement expires independently of accepted one-shot edges. */
+export const expireHeldInput = (input: Input): Input => ({
+  ...idleInput(),
+  kick: input.kick,
+  wave: input.wave,
+});
 export const bodyAt = (p: Vec3): Body => ({
   ...p,
   vx: 0,

@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -34,6 +35,60 @@ async function enter(page: Page, identity: string, url?: string) {
       { url, identity },
     );
 }
+test("a delayed client step consumes pending edges before acknowledging expired held movement", async ({
+  page,
+}) => {
+  await enter(page, "ari");
+  const result = await page.evaluate(() => {
+    const w = (window as any).zoomapActionYard.world;
+    const time = performance.now();
+    const pending = ++w.inputSequence;
+    w.inputs[w.session] = {
+      x: 1,
+      z: -1,
+      sprint: true,
+      toolHeld: true,
+      kick: true,
+      wave: true,
+    };
+    w.inputSequences[w.session] = pending;
+    w.inputAcks[w.session] = pending - 1;
+    w.inputAt[w.session] = time - 300;
+    w.state.players[w.session].kick = 0;
+    w.state.players[w.session].gesture = 0;
+    const start = { ...w.state.players[w.session] };
+    w.accumulator = 1 / 30;
+    w.last = time;
+    w.advance(false);
+    const first = { ...w.state.players[w.session] };
+    const acknowledged = w.inputAcks[w.session];
+    const consumed = { ...w.inputs[w.session] };
+    w.accumulator = 1 / 30;
+    w.advance(false);
+    return {
+      pending,
+      acknowledged,
+      start,
+      first,
+      consumed,
+      second: { ...w.state.players[w.session] },
+    };
+  });
+  expect(result.acknowledged).toBeGreaterThanOrEqual(result.pending);
+  expect(result.first.kick).toBeGreaterThan(0);
+  expect(result.first.gesture).toBeGreaterThan(0);
+  expect(result.first.x).toBe(result.start.x);
+  expect(result.first.z).toBe(result.start.z);
+  expect(result.consumed).toMatchObject({
+    x: 0,
+    z: 0,
+    kick: false,
+    wave: false,
+  });
+  expect(result.consumed.sprint).not.toBe(true);
+  expect(result.consumed.toolHeld).not.toBe(true);
+  expect(result.second.kick).toBeLessThan(result.first.kick);
+});
 async function observe(page: Page, session: string) {
   await page.evaluate((session) => {
     const samples: { time: number; x: number; z: number; facing: number }[] =
@@ -64,7 +119,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
   test.setTimeout(40000);
   const context = await browser.newContext(),
     peerContext = await browser.newContext(),
-    proxy = await networkProxy("ws://127.0.0.1:8790/room");
+    proxy = await networkProxy(actionURL);
   try {
     const a = await context.newPage(),
       b = await peerContext.newPage();
