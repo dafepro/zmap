@@ -229,23 +229,50 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
         ),
       )
       .toBe("wake-driver");
-    const previousEpoch = await b.evaluate(
-        () => (window as any).zoomapActionYard.world.epoch,
-      ),
+    const participants = [a, b, c];
+    let election: { session: string; host: string; epoch: number }[] = [];
+    await expect
+      .poll(async () => {
+        election = await Promise.all(
+          participants.map((page) =>
+            page.evaluate(() => {
+              const w = (window as any).zoomapActionYard.world;
+              return { session: w.session, host: w.host, epoch: w.epoch };
+            }),
+          ),
+        );
+        return (
+          election.every(
+            (peer) =>
+              peer.host === election[0].host &&
+              peer.epoch === election[0].epoch,
+          ) && election.some((peer) => peer.session === peer.host)
+        );
+      })
+      .toBe(true);
+    const hostIndex = election.findIndex((peer) => peer.session === peer.host);
+    const [first, second] = participants.filter(
+      (_, index) => index !== hostIndex,
+    );
+    const previousEpoch = election[0].epoch,
+      departedSession = election[hostIndex].session,
       started = Date.now();
-    await a.close();
+    await participants[hostIndex].close();
     await expect
       .poll(() =>
-        b.evaluate(() => (window as any).zoomapActionYard.world.epoch),
+        first.evaluate(() => (window as any).zoomapActionYard.world.epoch),
       )
       .toBeGreaterThan(previousEpoch);
-    await expect(b.locator("#connection")).toHaveText("Live together");
+    for (const survivor of [first, second]) {
+      await expect(survivor.locator("#connection")).toHaveText("Live together");
+      await expect(survivor.locator("#people")).toHaveText("2 PLAYERS");
+    }
     const recoveryMs = Date.now() - started;
     expect(recoveryMs).toBeLessThan(5000);
     await expect
       .poll(async () => {
         const [one, two] = await Promise.all(
-          [b, c].map((page) =>
+          [first, second].map((page) =>
             page.evaluate(
               () => (window as any).zoomapActionYard.world.state.toys.ball,
             ),
@@ -254,7 +281,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
         return Math.hypot(one.x - two.x, one.y - two.y, one.z - two.z);
       })
       .toBeLessThan(0.6);
-    const record = await b.evaluate(() => {
+    const record = await first.evaluate(() => {
       const app = (window as any).zoomapActionYard;
       return {
         bytes: new TextEncoder().encode(
@@ -273,7 +300,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
     expect(record.state.actions.events.length).toBeLessThanOrEqual(32);
     expect(errors).toEqual([]);
     await mkdir("docs/evidence/actions", { recursive: true });
-    await b
+    await first
       .locator(".field")
       .screenshot({ path: "docs/evidence/actions/shared-yard.png" });
     await writeFile(
@@ -283,6 +310,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
           provenance:
             "Three actual browser peers; public movement and shared action APIs; 75 ms each direction ±15 ms jitter, every 50th snapshot dropped by ordered application-message proxy. One recovery sample, not p95 or a phone claim.",
           recoveryMs,
+          departedSession,
           pass,
           pulse,
           ...record,
@@ -292,16 +320,16 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
       ) + "\n",
     );
     // A separate review view uses live player movement and equipment, after gameplay assertions.
-    await driveTo(b, -1, -3);
-    await driveTo(c, -3, -1);
-    await equip(c, "wake-driver");
-    for (const page of [b, c])
+    await driveTo(first, -1, -3);
+    await driveTo(second, -3, -1);
+    await equip(second, "wake-driver");
+    for (const page of [first, second])
       await page.evaluate(() =>
         (window as any).zoomapActionYard.world.setToolAim(1, 1),
       );
     await expect
       .poll(() =>
-        b.evaluate(() => {
+        first.evaluate(() => {
           const players = (window as any).zoomapActionYard.world.state.actions
             .players;
           return Object.values(players).every(
@@ -312,7 +340,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
       .toBe(true);
     await expect
       .poll(() =>
-        b.evaluate(
+        first.evaluate(
           () =>
             (window as any).zoomapActionYard.kit
               .diagnostics()
@@ -320,7 +348,7 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
         ),
       )
       .toBe(2);
-    await b
+    await first
       .locator(".field")
       .screenshot({ path: "docs/evidence/actions/two-tools-review.png" });
   } finally {
