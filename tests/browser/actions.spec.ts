@@ -1,3 +1,4 @@
+import { electedHost } from "../helpers/elected-host";
 import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -229,35 +230,14 @@ test("three real clients share a winch pass, panel return, player-moving pulse, 
         ),
       )
       .toBe("wake-driver");
-    const participants = [a, b, c];
-    let election: { session: string; host: string; epoch: number }[] = [];
-    await expect
-      .poll(async () => {
-        election = await Promise.all(
-          participants.map((page) =>
-            page.evaluate(() => {
-              const w = (window as any).zoomapActionYard.world;
-              return { session: w.session, host: w.host, epoch: w.epoch };
-            }),
-          ),
-        );
-        return (
-          election.every(
-            (peer) =>
-              peer.host === election[0].host &&
-              peer.epoch === election[0].epoch,
-          ) && election.some((peer) => peer.session === peer.host)
-        );
-      })
-      .toBe(true);
-    const hostIndex = election.findIndex((peer) => peer.session === peer.host);
-    const [first, second] = participants.filter(
-      (_, index) => index !== hostIndex,
-    );
-    const previousEpoch = election[0].epoch,
-      departedSession = election[hostIndex].session,
-      started = Date.now();
-    await participants[hostIndex].close();
+    const {
+      host,
+      survivors: [first, second],
+      epoch: previousEpoch,
+      departedSession,
+    } = await electedHost([a, b, c], "zoomapActionYard");
+    const started = Date.now();
+    await host.close();
     await expect
       .poll(() =>
         first.evaluate(() => (window as any).zoomapActionYard.world.epoch),

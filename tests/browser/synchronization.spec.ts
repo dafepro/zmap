@@ -1,3 +1,4 @@
+import { electedHost } from "../helpers/elected-host";
 import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
@@ -198,29 +199,36 @@ test("both actual peers retain sustained keyboard movement after release, latenc
       expect(result.maximumStep).toBeLessThan(0.3);
       expect(result.minimumForwardStep).toBeGreaterThan(-0.01);
     }
-    const hostInitial = await read(a);
+    const firstPlayer = await read(a);
     await a.locator("canvas").focus();
     await a.keyboard.down("a");
     await a.waitForTimeout(1100);
     await a.keyboard.up("a");
     await expect
-      .poll(async () => (await read(b)).players[hostInitial.session].x)
-      .toBeLessThan(hostInitial.local.x - screenAxisSpeed * 0.85);
-    const epoch = (await read(b)).epoch;
-    await a.close();
-    await expect.poll(async () => (await read(b)).epoch).toBeGreaterThan(epoch);
-    const promoted = await read(b);
+      .poll(async () => (await read(b)).players[firstPlayer.session].x)
+      .toBeLessThan(firstPlayer.local.x - screenAxisSpeed * 0.85);
+    const {
+      host,
+      survivors: [survivor],
+      epoch,
+      departedSession,
+    } = await electedHost([a, b], "zoomapActionYard");
+    await host.close();
+    await expect
+      .poll(async () => (await read(survivor)).epoch)
+      .toBeGreaterThan(epoch);
+    const promoted = await read(survivor);
     expect(promoted.host).toBe(promoted.session);
-    await b.locator("canvas").focus();
-    await b.keyboard.down("a");
-    await b.waitForTimeout(1000);
-    await b.keyboard.up("a");
-    await b.waitForTimeout(900);
-    const final = await read(b);
+    await survivor.locator("canvas").focus();
+    await survivor.keyboard.down("a");
+    await survivor.waitForTimeout(1000);
+    await survivor.keyboard.up("a");
+    await survivor.waitForTimeout(900);
+    const final = await read(survivor);
     expect(final.local.x).toBeLessThan(
       promoted.local.x - screenAxisSpeed * 0.75,
     );
-    expect(final.local.x).toBeCloseTo(final.players[sid].x, 4);
+    expect(final.local.x).toBeCloseTo(final.players[final.session].x, 4);
     await mkdir("docs/evidence/synchronization", { recursive: true });
     await writeFile(
       "docs/evidence/synchronization/movement.json",
@@ -229,6 +237,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
           provenance:
             "Two actual Chrome peers, 75ms ±15ms each direction, every50th snapshot dropped; actual rendered transforms sampled at animation frames",
           cadence,
+          departedSession,
           initial,
           settled,
           final,
