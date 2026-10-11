@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { WebSocket } from "ws";
 import { createRoomService } from "../src/server";
-import { idleInput, stepWorld, type WorldMap } from "../src/core";
+import {
+  idleInput,
+  expireHeldInput,
+  stepWorld,
+  type WorldMap,
+} from "../src/core";
 import { mergeUnconsumedInput } from "../src/client";
 
 const map: WorldMap = {
@@ -233,6 +238,22 @@ test("newer held samples cannot erase pending edges, and consuming one step prev
     "mailbox merging does not mutate received samples",
   );
 });
+test("expiry clears held intent while preserving each combination of discrete edges", () => {
+  for (const kick of [false, true])
+    for (const wave of [false, true]) {
+      const input = {
+        ...idleInput(),
+        x: 1,
+        z: -1,
+        sprint: true,
+        toolHeld: true,
+        kick,
+        wave,
+      };
+      assert.deepEqual(expireHeldInput(input), { ...idleInput(), kick, wave });
+      assert.equal(input.x, 1, "expiry does not mutate the mailbox");
+    }
+});
 test("legacy and input-ack clients cannot share one transient room in either join order", async (t) => {
   for (const firstModern of [false, true]) {
     const s = await setup();
@@ -301,6 +322,84 @@ test("expired sprint is not resurrected when another browser becomes host", asyn
     room.inputs[bid],
     undefined,
     "handoff excludes stale held movement entirely",
+  );
+});
+test("a stale held sample transfers its unconsumed edges through handoff once", async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const a = s.join("ari"),
+    aid = (await a.wait("welcome")).session;
+  const b = s.join("sam"),
+    bid = (await b.wait("welcome")).session;
+  await a.wait("room", (m) => m.roster.length === 2);
+  b.send({
+    type: "input",
+    sequence: 1,
+    input: {
+      ...idleInput(),
+      x: 1,
+      sprint: true,
+      toolHeld: true,
+      kick: true,
+      wave: true,
+    },
+  });
+  await a.wait("input", (m) => m.session === bid);
+  b.send({
+    type: "input",
+    sequence: 2,
+    input: { ...idleInput(), z: -1, sprint: true, toolHeld: true },
+  });
+  await a.wait("input", (m) => m.session === bid && m.sequence === 2);
+  await delay(280);
+  a.send({ type: "heartbeat", eligible: false });
+  const next = await b.wait("room", (m) => m.host === bid);
+  assert.deepEqual(next.inputs[bid]?.input, {
+    ...idleInput(),
+    kick: true,
+    wave: true,
+  });
+  assert.equal(next.inputs[bid].sequence, 2);
+  assert.ok(next.inputs[bid].ageMs > 250);
+  assert.equal(
+    next.inputAcks[bid] ?? 0,
+    0,
+    "handoff does not acknowledge unconsumed input",
+  );
+  const state = structuredClone(next.state);
+  stepWorld(map, state, { [bid]: next.inputs[bid].input });
+  assert.ok((state.players[bid].kick ?? 0) > 0);
+  assert.ok(state.players[bid].gesture > 0);
+  assert.equal(state.players[bid].x, next.state.players[bid].x);
+  assert.equal(state.players[bid].z, next.state.players[bid].z);
+  b.send({
+    type: "snapshot",
+    epoch: next.epoch,
+    state,
+    inputAcks: { [aid]: 0, [bid]: 2 },
+  });
+  await a.wait("snapshot", (m) => m.inputAcks?.[bid] === 2);
+  a.send({ type: "heartbeat", eligible: true });
+  b.send({ type: "heartbeat", eligible: false });
+  const returned = await a.wait(
+    "room",
+    (m) => m.host === aid && m.epoch > next.epoch,
+  );
+  assert.equal(returned.inputAcks[bid], 2);
+  assert.equal(
+    returned.inputs[bid],
+    undefined,
+    "consumed stale edges are not replayed",
+  );
+  b.ws.close();
+  const departed = await a.wait(
+    "room",
+    (m) => m.roster.length === 1 && m.epoch >= returned.epoch,
+  );
+  assert.equal(
+    departed.inputs[bid],
+    undefined,
+    "departure removes pending input",
   );
 });
 test("a host cannot retain authority by publishing slow token snapshots while acknowledging heartbeats", async (t) => {

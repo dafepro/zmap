@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { networkProxy } from "../helpers/network-proxy";
@@ -45,7 +46,7 @@ test("a kicked existing ball completes one shared cannon fuse across late join a
   browser,
 }) => {
   test.setTimeout(70000);
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room");
+  const proxy = await networkProxy(actionURL);
   const context = await browser.newContext();
   const errors: string[] = [];
   try {

@@ -1,3 +1,5 @@
+import { electedHost } from "../helpers/elected-host";
+import { relayURL } from "../helpers/fixture-ports";
 import { test, expect } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 import { writeFile } from "node:fs/promises";
@@ -5,7 +7,7 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
   browser,
 }) => {
   test.setTimeout(45000);
-  const proxy = await networkProxy("ws://127.0.0.1:8788/room");
+  const proxy = await networkProxy(relayURL);
   const context = await browser.newContext();
   const pages = [];
   try {
@@ -57,23 +59,30 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
       });
     }, proxy.url);
     await expect(b.locator("#count")).toHaveText("3 / 20");
-    const before = await b.evaluate(() => {
-      const w = (window as any).zoomapExample.world;
-      return { epoch: w.epoch, host: w.host, session: w.session };
-    });
+    const {
+      host,
+      survivors: [first, second],
+      epoch,
+      departedSession,
+    } = await electedHost(pages, "zoomapExample");
     const at = Date.now();
-    await a.close();
+    await host.close();
     await expect
-      .poll(() => b.evaluate(() => (window as any).zoomapExample.world.epoch))
-      .toBeGreaterThan(before.epoch);
-    await expect(b.locator("#status")).toHaveText("Live together");
+      .poll(() =>
+        first.evaluate(() => (window as any).zoomapExample.world.epoch),
+      )
+      .toBeGreaterThan(epoch);
+    for (const survivor of [first, second]) {
+      await expect(survivor.locator("#status")).toHaveText("Live together");
+      await expect(survivor.locator("#count")).toHaveText("2 / 20");
+    }
     const recoveryMs = Date.now() - at;
     expect(recoveryMs).toBeLessThan(5000);
     // Identical content command is resent after the proxy drops its saved reply AND connection.
-    const revision = await b.evaluate(
+    const revision = await first.evaluate(
       () => (window as any).zoomapExample.world.durable.revision,
     );
-    const existing = await b.evaluate(() =>
+    const existing = await first.evaluate(() =>
       (window as any).zoomapExample.world.durable.items.find(
         (i: any) => i.id === "network-pot",
       ),
@@ -88,16 +97,18 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
       expectedRevision: existing?.revision ?? 0,
     };
     proxy.dropNextSaved();
-    await b.evaluate(async (command) => {
+    await first.evaluate(async (command) => {
       await (window as any).zoomapExample.world.edit(command);
     }, command);
     await expect
       .poll(() =>
-        c.evaluate(() => (window as any).zoomapExample.world.durable.revision),
+        second.evaluate(
+          () => (window as any).zoomapExample.world.durable.revision,
+        ),
       )
       .toBe(revision + 1);
     expect(
-      await c.evaluate(
+      await second.evaluate(
         () =>
           (window as any).zoomapExample.world.durable.items.filter(
             (i: any) => i.id === "network-pot",
@@ -108,7 +119,7 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
       .poll(
         async () => {
           const poses = await Promise.all(
-            [b, c].map((p) =>
+            [first, second].map((p) =>
               p.evaluate(() => {
                 const t = (window as any).zoomapExample.world.state.toys.ball;
                 return { x: t.x, y: t.y, z: t.z };
@@ -124,12 +135,12 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
         { timeout: 15000 },
       )
       .toBeLessThan(0.15);
-    const placed = await b.evaluate(() =>
+    const placed = await first.evaluate(() =>
       (window as any).zoomapExample.world.durable.items.find(
         (i: any) => i.id === "network-pot",
       ),
     );
-    await b.evaluate(
+    await first.evaluate(
       async (command) => {
         await (window as any).zoomapExample.world.edit(command);
       },
@@ -150,6 +161,7 @@ test("three real browsers converge through shaped traffic, host loss and a dropp
           method:
             "Real browser clients, ordered application-message proxy, 75 ms per direction ±15 ms jitter; every 50th snapshot dropped. Not packet-level loss. One recovery sample, not p95. No full-room/phone claim.",
           recoveryMs,
+          departedSession,
           localResponseSampleMs: localResponseSample,
           durableCommitsForRetriedCommand: 1,
           ...proxy.stats(),

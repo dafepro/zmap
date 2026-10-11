@@ -1,3 +1,4 @@
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { networkProxy } from "../helpers/network-proxy";
@@ -23,7 +24,7 @@ test("friends see the same stow, emote and redraw through late join, host loss a
   browser,
 }) => {
   test.setTimeout(65000);
-  const proxy = await networkProxy("ws://127.0.0.1:8790/room");
+  const proxy = await networkProxy(actionURL);
   const context = await browser.newContext(),
     errors: string[] = [];
   try {

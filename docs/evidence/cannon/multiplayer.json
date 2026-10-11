@@ -16,7 +16,7 @@
           "id": "courtyard-cannon",
           "phase": "ready",
           "progress": 0,
-          "displayedTick": 337.501,
+          "displayedTick": 329.4889999985695,
           "lastFire": null,
           "fireAge": null,
           "recoil": 0,
@@ -30,7 +30,7 @@
   },
   "fused": {
     "id": 1,
-    "tick": 343,
+    "tick": 334,
     "object": "courtyard-cannon",
     "kind": "fuse",
     "data": {
@@ -43,14 +43,14 @@
     }
   },
   "joining": {
-    "tick": 348,
-    "session": "7e9fec67-1f2f-40ea-8aae-e356311bc608",
+    "tick": 340,
+    "session": "b5f3e8d9-a17f-4f17-8ea1-edd0c5dbbd47",
     "object": {
       "balls": {
         "cannon-ball": {
           "phase": "fuse",
-          "startedTick": 343,
-          "untilTick": 367,
+          "startedTick": 334,
+          "untilTick": 358,
           "position": {
             "x": 6.039500635842007,
             "y": 0.17826348001818718,
@@ -62,7 +62,7 @@
     "events": [
       {
         "id": 1,
-        "tick": 343,
+        "tick": 334,
         "object": "courtyard-cannon",
         "kind": "fuse",
         "data": {
@@ -78,7 +78,7 @@
   },
   "launch": {
     "id": 2,
-    "tick": 367,
+    "tick": 358,
     "object": "courtyard-cannon",
     "kind": "fire",
     "data": {
@@ -95,14 +95,14 @@
       }
     }
   },
-  "recoveryMs": 756,
+  "recoveryMs": 712,
   "departedHost": {
-    "host": "2d5e5e3a-36b8-45d7-b843-32ad1123cb90",
-    "session": "2d5e5e3a-36b8-45d7-b843-32ad1123cb90",
+    "host": "418f89fd-7a1d-4bf6-a270-c34fb3b3fa0f",
+    "session": "418f89fd-7a1d-4bf6-a270-c34fb3b3fa0f",
     "epoch": 1,
-    "tick": 356,
+    "tick": 346,
     "phase": "fuse",
-    "remainingTicks": 11
+    "remainingTicks": 12
   },
   "ids": [
     "ball",
@@ -111,19 +111,19 @@
     "practice-ball"
   ],
   "state": {
-    "tick": 378,
+    "tick": 369,
     "players": {
-      "6c1e26c6-aa4e-446a-98bc-07a9aa422bab": {
-        "x": 7.811752523678576,
+      "31998022-dbcc-403f-bd70-5f618ffa6db7": {
+        "x": 7.830402886693007,
         "y": 0,
-        "z": -1.9988007628899414,
+        "z": -1.9968976646231622,
         "vx": 0,
         "vy": 0,
         "vz": 0,
-        "facing": 1.469107475031817,
+        "facing": -1.6724851785579797,
         "gesture": 0
       },
-      "7e9fec67-1f2f-40ea-8aae-e356311bc608": {
+      "b5f3e8d9-a17f-4f17-8ea1-edd0c5dbbd47": {
         "x": -2,
         "y": 0,
         "z": -3,
@@ -183,13 +183,13 @@
       "appliedSequence": 2,
       "eventSequence": 0,
       "players": {
-        "6c1e26c6-aa4e-446a-98bc-07a9aa422bab": {
+        "31998022-dbcc-403f-bd70-5f618ffa6db7": {
           "tool": null,
           "phase": "idle",
           "held": false,
           "aim": {
-            "x": 0.9948341425312656,
-            "z": 0.10151368801339801
+            "x": -0.9948341425312653,
+            "z": -0.10151368801340054
           },
           "aimManual": false,
           "cooldownUntil": 0,
@@ -216,7 +216,7 @@
             "emote": null
           }
         },
-        "7e9fec67-1f2f-40ea-8aae-e356311bc608": {
+        "b5f3e8d9-a17f-4f17-8ea1-edd0c5dbbd47": {
           "tool": null,
           "phase": "idle",
           "held": false,
@@ -260,8 +260,8 @@
           "balls": {
             "cannon-ball": {
               "phase": "cooldown",
-              "startedTick": 367,
-              "untilTick": 390,
+              "startedTick": 358,
+              "untilTick": 381,
               "position": {
                 "x": 6,
                 "y": 0.5,
@@ -274,7 +274,7 @@
       "events": [
         {
           "id": 1,
-          "tick": 343,
+          "tick": 334,
           "object": "courtyard-cannon",
           "kind": "fuse",
           "data": {
@@ -288,7 +288,7 @@
         },
         {
           "id": 2,
-          "tick": 367,
+          "tick": 358,
           "object": "courtyard-cannon",
           "kind": "fire",
           "data": {
@@ -316,10 +316,10 @@
         "id": "courtyard-cannon",
         "phase": "fired",
         "progress": 0,
-        "displayedTick": 377.501,
+        "displayedTick": 368.5010000014305,
         "lastFire": 2,
-        "fireAge": 0.35003333333333253,
-        "recoil": 0.020779152086582087,
+        "fireAge": 0.3500333333810166,
+        "recoil": 0.02077915208871061,
         "sparks": 0,
         "flow": 0,
         "smoke": 16,
@@ -328,7 +328,7 @@
     ]
   },
   "renderer": {
-    "frameP95Ms": 16.700000000000728,
+    "frameP95Ms": 16.800000071525574,
     "drawCalls": 149,
     "triangles": 56892,
     "geometries": 156,

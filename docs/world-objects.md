@@ -87,3 +87,33 @@ The cannon now has a player hull, wheel boxes matching the Blender dimensions,
 and its existing front ball stop. The courtyard's cannon approach requests
 `movement.moveTo(point, { avoidToys: true })` to preserve the waiting ball; normal
 click movement retains deliberate ball pushing.
+
+## Contextual interactions
+
+Maps opt into `actionCatalog.interactions`, a bounded list of
+`{ object, action, range, point }` presets. `point` is a local-space interaction
+socket; range is 0.25–4 metres. Each registered behavior declares its allowed
+`interactions` and an optional `interact(state, action, session, tick)` hook.
+Both browser and relay must install the same behavior. No executable code or
+arbitrary action data travels over the socket.
+
+`world.interact(objectId, actionId)` submits a sequenced shared command.
+`objectInteractionAvailable(map, state, session, objectId, actionId, items,
+catalog)` gives the consumer the same range/line-of-sight check used during
+simulation. Consumers provide labels, pointer picking and contextual menus.
+The host rechecks current position, walls, floor separation and movement locks;
+replayed commands cannot apply twice. Rejected spatial actions consume their
+sequence without changing state. The new `object-interactions-v1` capability
+prevents incompatible clients from entering interactive maps.
+
+The included `switchBehavior` accepts `{ initialOn: boolean }` and exposes
+`toggle`. Its transient state is `{ on, changedTick }`, replicated in snapshots
+and host handoffs. A nine-tick debounce prevents simultaneous switch spam.
+It can drive a lamp or any consumer-owned presentation. It grants no inventory,
+training credit or durable entitlement.
+
+## Settled-step constraints
+
+An optional `afterStep(context)` hook runs in object ID order after player movement, actions, and all toy contacts, before a tick is published. It receives the same simulation and validated event emitter as `step`, plus `toyHeld`, but cannot request a new kinematic hold. Use it for consumer-owned boundaries or swept goal detection that must observe the final physics result. Hooks must remain deterministic; client and relay must install matching implementations and package versions. The library contains no scoring policy.
+
+The view requests a stencil buffer. Consumer character materials may use stencil masks for depth-aware occlusion effects; the renderer clears the stencil each frame.

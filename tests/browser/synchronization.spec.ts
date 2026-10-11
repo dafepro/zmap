@@ -1,3 +1,5 @@
+import { electedHost } from "../helpers/elected-host";
+import { actionURL } from "../helpers/fixture-ports";
 import { test, expect, type Page } from "@playwright/test";
 import { networkProxy } from "../helpers/network-proxy";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -11,6 +13,9 @@ const read = (page: Page) =>
       session: w.session,
       host: w.host,
       epoch: w.epoch,
+      healthy: w.hostHealthy,
+      healthySince: w.healthySince,
+      clockAge: performance.now() - w.last,
       tick: w.state.tick,
       local: { ...w.local },
       players: w.state.players,
@@ -31,6 +36,60 @@ async function enter(page: Page, identity: string, url?: string) {
       { url, identity },
     );
 }
+test("a delayed client step consumes pending edges before acknowledging expired held movement", async ({
+  page,
+}) => {
+  await enter(page, "ari");
+  const result = await page.evaluate(() => {
+    const w = (window as any).zoomapActionYard.world;
+    const time = performance.now();
+    const pending = ++w.inputSequence;
+    w.inputs[w.session] = {
+      x: 1,
+      z: -1,
+      sprint: true,
+      toolHeld: true,
+      kick: true,
+      wave: true,
+    };
+    w.inputSequences[w.session] = pending;
+    w.inputAcks[w.session] = pending - 1;
+    w.inputAt[w.session] = time - 300;
+    w.state.players[w.session].kick = 0;
+    w.state.players[w.session].gesture = 0;
+    const start = { ...w.state.players[w.session] };
+    w.accumulator = 1 / 30;
+    w.last = time;
+    w.advance(false);
+    const first = { ...w.state.players[w.session] };
+    const acknowledged = w.inputAcks[w.session];
+    const consumed = { ...w.inputs[w.session] };
+    w.accumulator = 1 / 30;
+    w.advance(false);
+    return {
+      pending,
+      acknowledged,
+      start,
+      first,
+      consumed,
+      second: { ...w.state.players[w.session] },
+    };
+  });
+  expect(result.acknowledged).toBeGreaterThanOrEqual(result.pending);
+  expect(result.first.kick).toBeGreaterThan(0);
+  expect(result.first.gesture).toBeGreaterThan(0);
+  expect(result.first.x).toBe(result.start.x);
+  expect(result.first.z).toBe(result.start.z);
+  expect(result.consumed).toMatchObject({
+    x: 0,
+    z: 0,
+    kick: false,
+    wave: false,
+  });
+  expect(result.consumed.sprint).not.toBe(true);
+  expect(result.consumed.toolHeld).not.toBe(true);
+  expect(result.second.kick).toBeLessThan(result.first.kick);
+});
 async function observe(page: Page, session: string) {
   await page.evaluate((session) => {
     const samples: { time: number; x: number; z: number; facing: number }[] =
@@ -60,10 +119,11 @@ test("both actual peers retain sustained keyboard movement after release, latenc
 }) => {
   test.setTimeout(40000);
   const context = await browser.newContext(),
-    proxy = await networkProxy("ws://127.0.0.1:8790/room");
+    peerContext = await browser.newContext(),
+    proxy = await networkProxy(actionURL);
   try {
     const a = await context.newPage(),
-      b = await context.newPage();
+      b = await peerContext.newPage();
     await enter(a, "ari", proxy.url);
     await enter(b, "sam", proxy.url);
     const initial = await read(b),
@@ -130,35 +190,45 @@ test("both actual peers retain sustained keyboard movement after release, latenc
         minimumForwardStep: Math.min(...deltas.map((frame) => frame.forward)),
       };
     });
+    console.log("CADENCE", JSON.stringify(cadence));
     for (const result of cadence) {
       expect(result.frames).toBeGreaterThan(20);
-      expect(result.movingFraction).toBeGreaterThan(0.75);
+      expect(result.movingFraction, JSON.stringify(cadence)).toBeGreaterThan(
+        0.75,
+      );
       expect(result.maximumStep).toBeLessThan(0.3);
       expect(result.minimumForwardStep).toBeGreaterThan(-0.01);
     }
-    const hostInitial = await read(a);
+    const firstPlayer = await read(a);
     await a.locator("canvas").focus();
     await a.keyboard.down("a");
     await a.waitForTimeout(1100);
     await a.keyboard.up("a");
     await expect
-      .poll(async () => (await read(b)).players[hostInitial.session].x)
-      .toBeLessThan(hostInitial.local.x - screenAxisSpeed * 0.85);
-    const epoch = (await read(b)).epoch;
-    await a.close();
-    await expect.poll(async () => (await read(b)).epoch).toBeGreaterThan(epoch);
-    const promoted = await read(b);
+      .poll(async () => (await read(b)).players[firstPlayer.session].x)
+      .toBeLessThan(firstPlayer.local.x - screenAxisSpeed * 0.85);
+    const {
+      host,
+      survivors: [survivor],
+      epoch,
+      departedSession,
+    } = await electedHost([a, b], "zoomapActionYard");
+    await host.close();
+    await expect
+      .poll(async () => (await read(survivor)).epoch)
+      .toBeGreaterThan(epoch);
+    const promoted = await read(survivor);
     expect(promoted.host).toBe(promoted.session);
-    await b.locator("canvas").focus();
-    await b.keyboard.down("a");
-    await b.waitForTimeout(1000);
-    await b.keyboard.up("a");
-    await b.waitForTimeout(900);
-    const final = await read(b);
+    await survivor.locator("canvas").focus();
+    await survivor.keyboard.down("a");
+    await survivor.waitForTimeout(1000);
+    await survivor.keyboard.up("a");
+    await survivor.waitForTimeout(900);
+    const final = await read(survivor);
     expect(final.local.x).toBeLessThan(
       promoted.local.x - screenAxisSpeed * 0.75,
     );
-    expect(final.local.x).toBeCloseTo(final.players[sid].x, 4);
+    expect(final.local.x).toBeCloseTo(final.players[final.session].x, 4);
     await mkdir("docs/evidence/synchronization", { recursive: true });
     await writeFile(
       "docs/evidence/synchronization/movement.json",
@@ -167,6 +237,7 @@ test("both actual peers retain sustained keyboard movement after release, latenc
           provenance:
             "Two actual Chrome peers, 75ms ±15ms each direction, every50th snapshot dropped; actual rendered transforms sampled at animation frames",
           cadence,
+          departedSession,
           initial,
           settled,
           final,
@@ -177,28 +248,49 @@ test("both actual peers retain sustained keyboard movement after release, latenc
     );
   } finally {
     await context.close();
+    await peerContext.close();
     await proxy.close();
   }
 });
 
-test("a visible host stalled to one frame per second yields authority instead of repeatedly rolling a friend back", async ({
+test("a visible host with both scheduling clocks stalled yields authority instead of repeatedly rolling a friend back", async ({
   browser,
 }) => {
   test.setTimeout(25000);
   const context = await browser.newContext();
   try {
-    const a = await context.newPage(),
+    let a = await context.newPage(),
       b = await context.newPage();
-    await a.addInitScript(() => {
-      const native = window.requestAnimationFrame.bind(window);
-      window.requestAnimationFrame = (callback) =>
-        native(() => {
-          setTimeout(() => callback(performance.now()), 850);
-        });
-    });
     await enter(a, "ari");
     await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
+      })
+      .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
     const start = await read(b);
+    await a.evaluate(() => {
+      const native = window.setTimeout.bind(window);
+      const frame = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        frame(() => native(() => callback(performance.now()), 850));
+      window.setTimeout = ((
+        callback: TimerHandler,
+        delay?: number,
+        ...args: unknown[]
+      ) =>
+        native(
+          callback,
+          Math.max(850, delay ?? 0),
+          ...args,
+        )) as typeof window.setTimeout;
+    });
     await b.locator("canvas").focus();
     await b.keyboard.down("d");
     await expect
@@ -222,6 +314,50 @@ test("a visible host stalled to one frame per second yields authority instead of
       .poll(async () => (await read(a)).players[final.session].x)
       .toBeCloseTo(final.local.x, 1);
     expect(final.epoch).toBeGreaterThan(start.epoch);
+  } finally {
+    await context.close();
+  }
+});
+
+test("slow drawing callbacks do not stop a healthy simulation clock", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  try {
+    let a = await context.newPage(),
+      b = await context.newPage();
+    await enter(a, "ari");
+    await enter(b, "sam");
+    await expect
+      .poll(async () => {
+        const states = await Promise.all([read(a), read(b)]);
+        return (
+          states.every((state) => state.healthy) &&
+          !!states[0].host &&
+          states[0].host === states[1].host
+        );
+      })
+      .toBe(true);
+    if ((await read(a)).host !== (await read(a)).session) [a, b] = [b, a];
+    await a.evaluate(() => {
+      const native = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (callback) =>
+        native(() => {
+          setTimeout(() => callback(performance.now()), 400);
+        });
+    });
+    const initial = await read(a);
+    await b.locator("canvas").focus();
+    await b.keyboard.down("d");
+    await b.waitForTimeout(1600);
+    await b.keyboard.up("d");
+    const final = await read(a);
+    expect(final.host).toBe(initial.session);
+    expect(
+      final.tick - initial.tick,
+      JSON.stringify({ initial, final }),
+    ).toBeGreaterThan(30);
+    expect(final.epoch).toBe(initial.epoch);
   } finally {
     await context.close();
   }

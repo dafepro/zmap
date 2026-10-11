@@ -1,5 +1,12 @@
 import { advanceToys } from "./toy-physics.js";
 import {
+  anticipateStrike,
+  resolveStrike,
+  type StrikeProfile,
+  type StrikeState,
+} from "./strike.js";
+import {
+  applyObjectInteraction,
   initialWorldObjects,
   stepWorldObjects,
   validWorldObjectState,
@@ -42,6 +49,12 @@ export type Toy = {
   restitution?: number;
   /** Kilograms. Omitted values use equal density, with a 0.3m ball weighing 1kg. */
   mass?: number;
+  /** Optional ball-specific ground deceleration in m/s². */
+  rollingResistance?: number;
+  /** Optional ball-specific gravity in m/s²; other toys retain 18. */
+  gravity?: number;
+  /** Optional timed, height-aware strike for a ball; other toys retain legacy kicks. */
+  strike?: StrikeProfile;
 };
 export type Trigger = {
   id: string;
@@ -55,6 +68,8 @@ export type WorldMap = {
   id: string;
   bounds: Rect;
   spawn: Vec3;
+  /** Seconds before kick contact; omitted/zero preserves immediate toy impulses. */
+  kickWindup?: number;
   surfaces: Surface[];
   blockers: Blocker[];
   toys: Toy[];
@@ -80,6 +95,10 @@ export type Body = Vec3 & {
   vz: number;
   facing: number;
   gesture: number;
+  /** Seconds remaining in the shared half-second kick pose. */
+  kick?: number;
+  /** Shared anticipation/actual contact target and committed jump for visual rigs. */
+  strike?: StrikeState;
   /** Increment on an intentional discontinuity; display must not interpolate across it. */
   teleportEpoch?: number;
 };
@@ -126,11 +145,21 @@ export const STEP = 1 / 30;
 /** Shared movement tuning in metres per second, used by prediction and authority. */
 export const WALK_SPEED = 2.2;
 export const SPRINT_SPEED = 5.4;
+export const requiresBallFlightV1 = (map: WorldMap) =>
+  map.toys.some(
+    (toy) => toy.gravity !== undefined || toy.strike?.closeSpeed !== undefined,
+  );
 export const idleInput = (): Input => ({
   x: 0,
   z: 0,
   kick: false,
   wave: false,
+});
+/** Held movement expires independently of accepted one-shot edges. */
+export const expireHeldInput = (input: Input): Input => ({
+  ...idleInput(),
+  kick: input.kick,
+  wave: input.wave,
 });
 export const bodyAt = (p: Vec3): Body => ({
   ...p,
@@ -183,6 +212,10 @@ export function validateMap(
     r.width > 0 &&
     r.depth > 0;
   if (
+    (map.kickWindup !== undefined &&
+      (!finite(map.kickWindup) ||
+        map.kickWindup < 0 ||
+        map.kickWindup >= 0.5)) ||
     map.version !== 1 ||
     !validId(map.id) ||
     !rect(map.bounds) ||
@@ -238,7 +271,25 @@ export function validateMap(
       (t.restitution ?? 0.65) > 1 ||
       !finite(t.mass ?? 1) ||
       (t.mass ?? 1) < 0.01 ||
-      (t.mass ?? 1) > 1000
+      (t.mass ?? 1) > 1000 ||
+      !finite(t.rollingResistance ?? 0.65) ||
+      (t.rollingResistance ?? 0.65) < 0 ||
+      (t.rollingResistance ?? 0.65) > 10 ||
+      !finite(t.gravity ?? 18) ||
+      (t.gravity ?? 18) < 1 ||
+      (t.gravity ?? 18) > 30 ||
+      (t.strike !== undefined &&
+        (!map.kickWindup ||
+          !t.strike ||
+          !finite(t.strike.speed) ||
+          t.strike.speed <= 0 ||
+          t.strike.speed > 20 ||
+          !finite(t.strike.closeSpeed ?? t.strike.speed) ||
+          (t.strike.closeSpeed ?? t.strike.speed) <= 0 ||
+          (t.strike.closeSpeed ?? t.strike.speed) > 20 ||
+          !finite(t.strike.closeLift) ||
+          t.strike.closeLift < 0 ||
+          t.strike.closeLift > 12))
     )
       throw Error("Invalid toy");
     ids.add(t.id);
@@ -404,6 +455,14 @@ export function movePlayer(
   body.vz = i.z * speed + (impulse?.z ?? 0);
   if (i.x || i.z) body.facing = Math.atan2(i.x, i.z);
   if (i.wave) body.gesture = 1.2;
+  if (
+    i.kick &&
+    (!map.kickWindup || (body.kick ?? 0) <= 0.5 - map.kickWindup + 1e-8)
+  )
+    body.kick = 0.5;
+  else if (body.kick !== undefined)
+    body.kick = Math.max(0, body.kick - Math.min(dt, 0.05));
+  if (body.kick === 0) delete body.strike;
   moveBody(map, body, 0.28, 1.5, Math.min(dt, 0.05), items, catalog);
 }
 export function initialSimulation(
@@ -431,15 +490,25 @@ export function stepWorld(
   objectBehaviors: ObjectBehaviors = [],
 ) {
   state.tick++;
-  stepActions(map, state, inputs, commands, items, catalog);
-  const { held: heldToys, targets: heldTargets } = stepWorldObjects(
-    map,
-    state,
-    objectBehaviors,
-    items,
-    catalog,
+  stepActions(map, state, inputs, commands, items, catalog, (command) =>
+    applyObjectInteraction(
+      map,
+      state,
+      command,
+      objectBehaviors,
+      items,
+      catalog,
+    ),
   );
+  const {
+    held: heldToys,
+    targets: heldTargets,
+    finish,
+  } = stepWorldObjects(map, state, objectBehaviors, items, catalog);
+  const kicking = new Set<string>();
+  const contact = 0.5 - (map.kickWindup ?? 0);
   for (const [id, b] of Object.entries(state.players)) {
+    const beforeKick = b.kick ?? 0;
     const action = state.actions?.players[id];
     if (actionMovementLocked(action))
       b.facing = Math.atan2(action!.aim.x, action!.aim.z);
@@ -452,6 +521,65 @@ export function stepWorld(
       catalog,
       actionMovementLocked(action) ? undefined : action?.impulse,
     );
+    const started =
+      !!map.kickWindup &&
+      !actionMovementLocked(action) &&
+      inputs[id]?.kick === true &&
+      beforeKick <= contact + 1e-8 &&
+      (b.kick ?? 0) > contact;
+    if (started) {
+      delete b.strike;
+      const support = supportAt(map, b.x, b.z, b.y + 0.25);
+      if (support && Math.abs(b.y - top(support, b.z)) < 0.08) {
+        const candidate = map.toys
+          .filter((toy) => toy.strike && !heldToys.has(toy.id))
+          .map((toy) =>
+            anticipateStrike(
+              b,
+              state.toys[toy.id],
+              toy.id,
+              toy.radius,
+              top(support, b.z),
+              map.kickWindup!,
+              toy.gravity ?? 18,
+            ),
+          )
+          .filter((strike): strike is StrikeState => !!strike)
+          .sort(
+            (a, c) =>
+              Math.hypot(a.target.x - b.x, a.target.z - b.z) -
+              Math.hypot(c.target.x - b.x, c.target.z - b.z),
+          )[0];
+        if (candidate) {
+          b.strike = candidate;
+          if (candidate.jumpHeight)
+            b.vy = Math.sqrt(2 * 18 * candidate.jumpHeight);
+        }
+      }
+    } else if (b.strike && (b.kick ?? 0) > contact + 1e-8) {
+      const toy = map.toys.find((toy) => toy.id === b.strike!.toy);
+      const support = supportAt(map, b.x, b.z, b.y + 0.25);
+      if (toy && support) {
+        const latest = anticipateStrike(
+          b,
+          state.toys[toy.id],
+          toy.id,
+          toy.radius,
+          top(support, b.z),
+          (b.kick ?? 0) - contact,
+          toy.gravity ?? 18,
+        );
+        if (latest) b.strike = { ...latest, jumpHeight: b.strike.jumpHeight };
+      }
+    }
+    if (
+      map.kickWindup
+        ? !actionMovementLocked(action) &&
+          beforeKick > contact + 1e-8 &&
+          (b.kick ?? 0) <= contact + 1e-8
+        : inputs[id]?.kick
+    )
+      kicking.add(id);
     if (action?.tool && action.performance?.drawn !== false) {
       if (!action.aimManual && !action.held && !actionMovementLocked(action))
         action.aim = { x: Math.sin(b.facing), z: Math.cos(b.facing) };
@@ -470,7 +598,26 @@ export function stepWorld(
       const dx = b.x - p.x,
         dz = b.z - p.z,
         distance = Math.hypot(dx, dz);
-      if (Math.abs(b.y - p.y) > 0.8 || distance > 1.65) continue;
+      if (distance > 1.65) continue;
+      const support = t.strike
+        ? supportAt(map, p.x, p.z, p.y + 0.25)
+        : undefined;
+      const resolved =
+        t.strike &&
+        support &&
+        kicking.has(id) &&
+        (!p.strike || p.strike.toy === t.id)
+          ? resolveStrike(p, b, t.radius, top(support, p.z), t.strike, p.strike)
+          : undefined;
+      if (Math.abs(b.y - p.y) > 0.8 && !resolved) continue;
+      const contactY = resolved
+        ? p.y +
+          (resolved.kind === "header"
+            ? 1.55
+            : resolved.kind === "bicycle"
+              ? 2.15
+              : 0.4)
+        : p.y + 0.4;
       // Check blockers along the short reach segment as well as vertical distance.
       if (
         [0.2, 0.4, 0.6, 0.8].some((f) =>
@@ -479,7 +626,7 @@ export function stepWorld(
             items,
             catalog,
             p.x + dx * f,
-            p.y + 0.4,
+            contactY + (resolved ? (resolved.target.y - contactY) * f : 0),
             p.z + dz * f,
             0.01,
             0.2,
@@ -487,10 +634,25 @@ export function stepWorld(
         )
       )
         continue;
-      if (inputs[id]?.kick) {
-        b.vx = (dx / Math.max(0.1, distance)) * 8;
-        b.vz = (dz / Math.max(0.1, distance)) * 8;
-        b.vy = 3;
+      if (kicking.has(id)) {
+        if (t.strike) {
+          if (!resolved) continue;
+          Object.assign(b, {
+            vx: resolved.velocity.x,
+            vy: resolved.velocity.y,
+            vz: resolved.velocity.z,
+          });
+          p.strike = {
+            toy: t.id,
+            kind: resolved.kind,
+            target: resolved.target,
+            jumpHeight: p.strike?.jumpHeight ?? 0,
+          };
+        } else {
+          b.vx = (dx / Math.max(0.1, distance)) * 8;
+          b.vz = (dz / Math.max(0.1, distance)) * 8;
+          b.vy = 3;
+        }
       } else if (distance < t.radius + 0.28 && Math.hypot(p.vx, p.vz) > 0.1) {
         const nx = dx / Math.max(0.01, distance),
           nz = dz / Math.max(0.01, distance);
@@ -526,6 +688,7 @@ export function stepWorld(
     worldToyColliders(map),
     heldTargets,
   );
+  finish();
   for (const key of Object.keys(state.triggers))
     state.triggers[key] = Math.max(0, state.triggers[key] - STEP);
 }
@@ -594,6 +757,17 @@ export function validSimulation(
     b.y <= 30 &&
     b.gesture >= 0 &&
     b.gesture <= 2 &&
+    (b.kick === undefined ||
+      (finite(b.kick) && b.kick >= 0 && b.kick <= 0.5)) &&
+    (b.strike === undefined ||
+      (b.strike &&
+        validId(b.strike.toy) &&
+        map.toys.some((toy) => toy.id === b.strike.toy && toy.strike) &&
+        ["ground", "header", "bicycle"].includes(b.strike.kind) &&
+        validVec(b.strike.target) &&
+        finite(b.strike.jumpHeight) &&
+        b.strike.jumpHeight >= 0 &&
+        b.strike.jumpHeight <= 0.8)) &&
     (b.teleportEpoch === undefined ||
       (Number.isSafeInteger(b.teleportEpoch) && b.teleportEpoch >= 0));
   return (

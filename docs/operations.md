@@ -4,7 +4,9 @@
 
 `npm ci && npm run dev` runs the development relay on 8787 and Vite on 5173, both on the LAN. Open the printed LAN URL from a phone on the same network. Browser traffic uses the same-origin Vite WebSocket proxy. `ZMAP_DATA_DIR` selects the demo persistence directory; default `.data/examples-v1` is ignored by Git.
 
-Browser tests run separate servers on 5174/8788 with `.data/browser-tests`, so they do not replace a visitor in the live 5173 example. Override development ports with `ZMAP_PORT` and `ZMAP_RELAY_PORT`.
+Browser tests run separate servers on 5174/8788/8790 with `.data/browser-tests`, so they do not replace a visitor in the live 5173 example. Override test ports with `ZMAP_TEST_PORT`, `ZMAP_TEST_RELAY_PORT` and `ZMAP_TEST_ACTION_PORT`; an occupied port fails rather than reusing another application. Override development ports with `ZMAP_PORT` and `ZMAP_RELAY_PORT`.
+
+Owned-repository CI runs on the guarded Mac runner with installed Chrome and separate test ports. Fork PRs remain on hosted Ubuntu/Chromium. Native browser success is desktop engine evidence; it does not qualify a consuming app's campus on software WebGL, physical phones or full rooms.
 
 The fixture server intentionally accepts Ari/Sam/Jo tokens. Use it only for development. Public hosting requires app-issued credentials, current access checks, an origin allowlist, TLS, bounded app callbacks and an appropriate transactional persistence adapter. There is no mandatory per-room server simulation process.
 

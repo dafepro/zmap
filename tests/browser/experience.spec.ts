@@ -21,7 +21,7 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
     if (/Multiple instances of Three/.test(message.text()))
       errors.push(message.text());
   });
-  await ready(host, "http://127.0.0.1:5174/?mode=shared&as=ari");
+  await ready(host, "/?mode=shared&as=ari");
   await host.waitForTimeout(6000);
   const sample = await host.evaluate(() => {
     const w = (window as any).zoomapExample.world;
@@ -52,7 +52,7 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
     ) + "\n",
   );
   const peer = await context.newPage();
-  await ready(peer, "http://127.0.0.1:5174/?mode=shared&as=sam");
+  await ready(peer, "/?mode=shared&as=sam");
   await expect(host.locator("#count")).toHaveText("2 / 20");
   const start = await host.evaluate(() => {
     const w = (window as any).zoomapExample.world;
@@ -79,7 +79,7 @@ test("real clients: keyboard control, shared ball, late join and abrupt host clo
   }));
   expect(after.x).toBeGreaterThan(before.x + 0.7);
   const late = await context.newPage();
-  await ready(late, "http://127.0.0.1:5174/?mode=shared&as=jo");
+  await ready(late, "/?mode=shared&as=jo");
   await expect(late.locator("#count")).toHaveText("3 / 20");
   expect(
     await late.evaluate(() => {
@@ -148,7 +148,7 @@ test("portrait: touch movement, interruption stops input, readable layout", asyn
     reducedMotion: "reduce",
   });
   const page = await context.newPage();
-  await ready(page, "http://127.0.0.1:5174/?mode=explore&as=jo");
+  await ready(page, "/?mode=explore&as=jo");
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);

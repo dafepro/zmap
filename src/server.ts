@@ -11,11 +11,13 @@ import {
   bodyAt,
   initialSimulation,
   normalizeInput,
+  expireHeldInput,
   validId,
   validSimulation,
   validateMap,
   validateCatalog,
   validateDurableState,
+  requiresBallFlightV1,
   type WorldMap,
   type ItemType,
   type Identity,
@@ -51,6 +53,7 @@ export type ServiceOptions = {
 };
 type Peer = {
   id: string;
+  authority: Identity;
   identity: Identity;
   ws: WebSocket;
   seen: number;
@@ -181,37 +184,41 @@ export function createRoomService(options: ServiceOptions) {
     durable: layout(room.durable),
     inputAcks: room.inputAcks,
     inputs: Object.fromEntries(
-      [...room.peers.values()]
-        .filter((peer) => peer.input && Date.now() - peer.inputAt <= 250)
-        .map((peer) => [
-          peer.id,
-          {
-            input: room.acknowledgesInput
-              ? {
-                  ...peer.input!,
-                  kick: peer.kickSequence > (room.inputAcks[peer.id] ?? 0),
-                  wave: peer.waveSequence > (room.inputAcks[peer.id] ?? 0),
-                }
-              : peer.input,
-            sequence: peer.inputSequence,
-            ageMs: Date.now() - peer.inputAt,
-          },
-        ]),
+      [...room.peers.values()].flatMap((peer) => {
+        if (!peer.input) return [];
+        const ageMs = Date.now() - peer.inputAt;
+        let input = room.acknowledgesInput
+          ? {
+              ...peer.input,
+              kick: peer.kickSequence > (room.inputAcks[peer.id] ?? 0),
+              wave: peer.waveSequence > (room.inputAcks[peer.id] ?? 0),
+            }
+          : peer.input;
+        if (ageMs > 250) {
+          if (!room.acknowledgesInput || (!input.kick && !input.wave))
+            return [];
+          input = expireHeldInput(input);
+        }
+        return [[peer.id, { input, sequence: peer.inputSequence, ageMs }]];
+      }),
     ),
     ...(options.map.actionCatalog
       ? { actionCommands: room.pendingActions }
       : {}),
   });
   const elect = (room: Room) => {
-    room.host =
+    const nextHost =
       [...room.peers.values()].find(
         (p) => p.eligible && Date.now() - p.seen < (options.leaseMs ?? 2400),
       )?.id ?? null;
+    if (nextHost === room.host) return false;
+    room.host = nextHost;
     room.epoch++;
     room.lastSnapshot = Date.now();
     room.progressAt = Date.now();
     room.progressTick = room.state.tick;
     metrics.elections++;
+    return true;
   };
   const depart = (room: Room, peer: Peer) => {
     if (!room.peers.delete(peer.id)) return;
@@ -299,6 +306,14 @@ export function createRoomService(options: ServiceOptions) {
               return;
             }
             if (
+              options.map.actionCatalog?.interactions &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("object-interactions-v1"))
+            ) {
+              ws.close(4400, "This map requires object-interactions-v1");
+              return;
+            }
+            if (
               options.map.objects &&
               (!Array.isArray(message.capabilities) ||
                 !message.capabilities.includes("world-objects-v1"))
@@ -312,6 +327,30 @@ export function createRoomService(options: ServiceOptions) {
                 !message.capabilities.includes("performance-v1"))
             ) {
               ws.close(4400, "This map requires performance-v1");
+              return;
+            }
+            if (
+              options.map.kickWindup &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("kick-windup-v1"))
+            ) {
+              ws.close(4400, "This map requires kick-windup-v1");
+              return;
+            }
+            if (
+              options.map.toys.some((toy) => toy.strike) &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("strike-v1"))
+            ) {
+              ws.close(4400, "This map requires strike-v1");
+              return;
+            }
+            if (
+              requiresBallFlightV1(options.map) &&
+              (!Array.isArray(message.capabilities) ||
+                !message.capabilities.includes("ball-flight-v1"))
+            ) {
+              ws.close(4400, "This map requires ball-flight-v1");
               return;
             }
             const identity = await readAdapter(
@@ -402,6 +441,7 @@ export function createRoomService(options: ServiceOptions) {
             rooms.set(room.id, room);
             peer = {
               id: randomUUID(),
+              authority: identity,
               identity: {
                 id: identity.id,
                 name: identity.name.slice(0, 30),
@@ -437,18 +477,30 @@ export function createRoomService(options: ServiceOptions) {
               capabilities: [
                 ...(room.acknowledgesInput ? ["input-ack-v1"] : []),
                 ...(room.supportsSprint ? ["sprint-v1"] : []),
+                ...(options.map.kickWindup ? ["kick-windup-v1"] : []),
+                ...(options.map.toys.some((toy) => toy.strike)
+                  ? ["strike-v1"]
+                  : []),
+                ...(requiresBallFlightV1(options.map)
+                  ? ["ball-flight-v1"]
+                  : []),
                 ...(options.map.actionCatalog ? ["actions-v1"] : []),
                 ...(options.map.actionCatalog?.performance
                   ? ["performance-v1"]
                   : []),
                 ...(options.map.objects ? ["world-objects-v1"] : []),
+                ...(options.map.actionCatalog?.interactions
+                  ? ["object-interactions-v1"]
+                  : []),
               ],
             });
             broadcast(room, metadata(room));
             return;
           }
           if (!room || !room.peers.has(peer.id)) return;
-          if (!(await readAdapter(options.canAccess(peer.identity, room.id)))) {
+          if (
+            !(await readAdapter(options.canAccess(peer.authority, room.id)))
+          ) {
             ws.close(4403, "Access expired");
             depart(room, peer);
             return;
@@ -459,8 +511,7 @@ export function createRoomService(options: ServiceOptions) {
           if (message.type === "heartbeat") {
             peer.eligible = message.eligible === true;
             if ((!peer.eligible && room.host === peer.id) || !room.host) {
-              elect(room);
-              broadcast(room, metadata(room));
+              if (elect(room)) broadcast(room, metadata(room));
             }
           } else if (message.type === "input") {
             if (message.input?.sprint !== undefined && !peer.supportsSprint)
@@ -562,6 +613,10 @@ export function createRoomService(options: ServiceOptions) {
               vz: b.vz,
               facing: b.facing,
               gesture: b.gesture,
+              ...(b.kick === undefined ? {} : { kick: b.kick }),
+              ...(b.strike === undefined
+                ? {}
+                : { strike: structuredClone(b.strike) }),
               ...(b.teleportEpoch === undefined
                 ? {}
                 : { teleportEpoch: b.teleportEpoch }),
@@ -666,7 +721,7 @@ export function createRoomService(options: ServiceOptions) {
           try {
             if (
               Date.now() - peer.seen > 8000 ||
-              !(await readAdapter(options.canAccess(peer.identity, room.id)))
+              !(await readAdapter(options.canAccess(peer.authority, room.id)))
             ) {
               peer.ws.close(4403, "Session expired");
               depart(room, peer);

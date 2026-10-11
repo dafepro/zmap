@@ -53,7 +53,9 @@ The trusted store must validate shape, entitlement, current owner, quota, revisi
 
 ## Trusted service
 
-`createRoomService({ server, map, catalog, store, authenticate, canAccess, allowedOrigins?, capacity?, leaseMs?, adapterTimeoutMs? })` attaches `/room` to an HTTP server. `authenticate(credential, room)` returns the app's safe `Identity` or null. `canAccess(identity, room)` is rechecked during activity and periodic liveness checks. Read-only callbacks (`authenticate`, `canAccess`, and `store.load`) time out after `adapterTimeoutMs` (default 2,000 ms). The adapter must also bound its own work; timing out the wait does not cancel an external request. Set an explicit origin allowlist and terminate TLS at the app boundary.
+`createRoomService({ server, map, catalog, store, authenticate, canAccess, allowedOrigins?, capacity?, leaseMs?, adapterTimeoutMs? })` attaches `/room` to an HTTP server. `authenticate(credential, room)` returns the app's safe `Identity` or null. `canAccess(identity, room)` is rechecked during activity and periodic liveness checks. The exact authenticated identity object is retained privately for continuing `canAccess` checks, allowing adapters to associate a per-session grant with a `WeakMap`. Only the bounded public identity fields are projected to the roster or durable command adapter. Never put credentials in public identity fields.
+
+Read-only callbacks (`authenticate`, `canAccess`, and `store.load`) time out after `adapterTimeoutMs` (default 2,000 ms). The adapter must also bound its own work; timing out the wait does not cancel an external request. Set an explicit origin allowlist and terminate TLS at the app boundary.
 
 `store.load(room, map)` returns a versioned durable record. `store.commit(room, identity, command, map, catalog)` must revalidate current app policy and commit atomically before resolving. The relay validates persisted placement/receipt structure on load and after commit, and verifies layout against the current map/catalog. The relay does not invent entitlement rules. The required callbacks have no permissive production default. `examples/store.ts` is an app adapter showing real file durability and owner/quota/CAS/idempotency checks; it is not core policy.
 
@@ -74,3 +76,44 @@ Movement input has a monotonically increasing sequence outside `Input`/`Simulati
 A roster update in the current host epoch merges membership into the running simulation. It must not replace the host's newer live poses, toy state or consumed input acknowledgements with an older relay checkpoint. Epoch changes still resume from the relay's accepted checkpoint. This distinction prevents joins and departures from rewinding moving players or replaying released input.
 
 `Input.sprint?: boolean` is a held movement choice, not a one-shot action or additional speed scalar. Only boolean input is accepted as sprint intent, and the relay rejects sprint fields from clients that did not negotiate the capability. `world.setSprinting(boolean)` and `world.sprinting` provide the public controller interface; the focused canvas also supports held Shift. False or omitted input walks. Prediction, acknowledged replay and host handoff preserve the same input, while stale held movement expires after 250 ms. Action movement locks still override either pace.
+
+Accepted kick/wave edges remain pending independently of that movement deadline.
+Handoff transfers at most one pending edge of each kind per live session until
+an accepted snapshot acknowledges its consuming step. A delayed host step clears
+stale steering, sprint and held-tool input before consuming those edges. It must
+not acknowledge an edge that it discarded. Accepted checkpoints prevent replay;
+session departure removes pending input. Host-health thresholds are unchanged.
+
+Kick presentation (0.1.7): `Body.kick` is optional seconds remaining in a half-second kick pose. It is replicated, bounded by snapshot validation, advances with movement prediction, and interpolates down without delaying a new kick. Apps can animate their own rigs; ball impulse rules are unchanged.
+
+### Simulation and display scheduling
+
+The timer and animation-frame callbacks consume one fixed-step accumulator. A
+render callback drains due simulation steps before sampling the interpolated pose;
+a delayed timer cannot pin healthy drawing frames to an exhausted pose interval.
+The timer remains active independently so slow presentation cannot stop simulation.
+Host health measures gaps in actual advancement, not lateness of one scheduler.
+
+## Optional kick contact timing (0.1.9)
+
+`WorldMap.kickWindup` optionally delays toy contact by fixed simulation seconds
+within `[0, 0.5)`. Omitted or zero keeps immediate kicks. A positive value requires
+`kick-windup-v1` on both client and room service; incompatible peers are rejected
+before joining. The half-second `Body.kick` timeline already travels in snapshots,
+so restoring a host checkpoint preserves pending contact without a second queue.
+Contact fires once when the remaining timer crosses `0.5 - kickWindup`, rounded
+up to the next fixed step. Reach, height and blockers are checked at contact.
+Repeated kick input during anticipation does not restart or postpone it. Walking,
+sprinting and steering continue throughout; use the shared timer to author a
+matching app-owned visual shot. The consumer owns any presentation-only recovery.
+
+For height-aware ball play, opt a toy into `strike: { speed, closeLift }` and use
+positive `kickWindup`. Such a room additionally requires `strike-v1`. The
+optional `Toy.rollingResistance` overrides the surface's value for that toy.
+The shared player body adds `strike?: { toy, kind, target, jumpHeight }`, where
+`kind` is `ground`, `header`, or `bicycle`, `target` is the anticipated or actual
+world-space ball centre, and `jumpHeight` is the committed physical apex in
+metres. Contact is resolved from actual ball height and reach; anticipation is
+only a target for animation and jump timing. See [physics](physics.md) for
+thresholds and shot velocities. Maps without a toy strike profile preserve the
+existing kick and wire behavior.

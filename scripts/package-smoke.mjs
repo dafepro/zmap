@@ -1,11 +1,27 @@
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 const root = process.cwd();
 const dir = mkdtempSync(join(tmpdir(), "zmap-consumer-"));
-const run = (bin, args, cwd = dir) =>
-  execFileSync(bin, args, { cwd, stdio: "pipe" });
+const run = (bin, args, cwd = dir) => {
+  if (process.platform === "win32") {
+    const js =
+      bin === "npm"
+        ? join(dirname(process.execPath), "node_modules/npm/bin/npm-cli.js")
+        : bin.endsWith("/.bin/tsc") || bin.endsWith("\\.bin\\tsc")
+          ? resolve(root, "node_modules/typescript/bin/tsc")
+          : bin.endsWith("/.bin/vite") || bin.endsWith("\\.bin\\vite")
+            ? resolve(root, "node_modules/vite/bin/vite.js")
+            : null;
+    if (js)
+      return execFileSync(process.execPath, [js, ...args], {
+        cwd,
+        stdio: "pipe",
+      });
+  }
+  return execFileSync(bin, args, { cwd, stdio: "pipe" });
+};
 try {
   run("npm", ["pack", "--pack-destination", dir], root);
   writeFileSync(

@@ -35,6 +35,10 @@ export function interpolateBody(a: Body, b: Body, alpha: number): Body {
     vz: mix(a.vz, b.vz),
     facing: a.facing + angle * alpha,
     gesture: mix(a.gesture, b.gesture),
+    ...(b.kick === undefined
+      ? {}
+      : { kick: b.kick > (a.kick ?? 0) ? b.kick : mix(a.kick ?? 0, b.kick) }),
+    ...(b.strike === undefined ? {} : { strike: structuredClone(b.strike) }),
     ...(b.teleportEpoch === undefined
       ? {}
       : { teleportEpoch: b.teleportEpoch }),

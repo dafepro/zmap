@@ -13,6 +13,7 @@ import {
 import {
   STEP,
   idleInput,
+  expireHeldInput,
   initialSimulation,
   movePlayer,
   normalizeInput,
@@ -20,6 +21,7 @@ import {
   stepWorld,
   validateMap,
   validateCatalog,
+  requiresBallFlightV1,
   type WorldMap,
   type ItemType,
   type Identity,
@@ -110,6 +112,8 @@ export class Zoomap {
     timer: ReturnType<typeof setTimeout>;
   };
   private frame = 0;
+  private simulationTimer?: ReturnType<typeof setTimeout>;
+  private lastRender = 0;
   private retry?: ReturnType<typeof setTimeout>;
   private last = 0;
   private accumulator = 0;
@@ -243,13 +247,15 @@ export class Zoomap {
     this.stopped = false;
     this.started = performance.now();
     this.setStatus("connecting");
-    this.last = performance.now();
+    this.last = this.lastRender = performance.now();
+    this.simulationTimer = setTimeout(this.advance, 0);
     this.frame = requestAnimationFrame(this.animate);
     const ready = new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.stopped = true;
         this.socket?.close();
         cancelAnimationFrame(this.frame);
+        clearTimeout(this.simulationTimer);
         this.setStatus("failed", "Room entry timed out");
       }, 10000);
       this.joining = { resolve, reject, timer };
@@ -271,11 +277,21 @@ export class Zoomap {
           capabilities: [
             "input-ack-v1",
             "sprint-v1",
+            ...(this.options.map.kickWindup ? ["kick-windup-v1"] : []),
+            ...(this.options.map.toys.some((toy) => toy.strike)
+              ? ["strike-v1"]
+              : []),
+            ...(requiresBallFlightV1(this.options.map)
+              ? ["ball-flight-v1"]
+              : []),
             ...(this.options.map.actionCatalog ? ["actions-v1"] : []),
             ...(this.options.map.actionCatalog?.performance
               ? ["performance-v1"]
               : []),
             ...(this.options.map.objects ? ["world-objects-v1"] : []),
+            ...(this.options.map.actionCatalog?.interactions
+              ? ["object-interactions-v1"]
+              : []),
           ],
           room: this.address!.room,
           credential,
@@ -295,6 +311,14 @@ export class Zoomap {
             !Array.isArray(m.capabilities) ||
             !m.capabilities.includes("input-ack-v1") ||
             !m.capabilities.includes("sprint-v1") ||
+            (this.options.map.kickWindup &&
+              !m.capabilities.includes("kick-windup-v1")) ||
+            (this.options.map.toys.some((toy) => toy.strike) &&
+              !m.capabilities.includes("strike-v1")) ||
+            (requiresBallFlightV1(this.options.map) &&
+              !m.capabilities.includes("ball-flight-v1")) ||
+            (this.options.map.actionCatalog?.interactions &&
+              !m.capabilities.includes("object-interactions-v1")) ||
             (this.options.map.actionCatalog?.performance &&
               !m.capabilities.includes("performance-v1")) ||
             (this.options.map.objects &&
@@ -406,7 +430,7 @@ export class Zoomap {
           this.lastStateAt = performance.now();
           // Existing authority presents membership on its normal interpolated
           // animation frame, avoiding an extra un-interpolated pose mid-frame.
-          if (!retainAuthority)
+          if (!retainAuthority && this.hostHealthy)
             this.view.render(
               this.state,
               this.roster,
@@ -630,6 +654,15 @@ export class Zoomap {
     this.submitAction({ sequence: ++this.actionSequence, kind: "draw", drawn });
     this.toolPressed = false;
   }
+  interact(object: string, action: string) {
+    if (this.disabled) return;
+    this.submitAction({
+      sequence: ++this.actionSequence,
+      kind: "interact",
+      object,
+      action,
+    });
+  }
   private submitAction(intent: ActionIntent) {
     const catalog = this.options.map.actionCatalog;
     if (!catalog) throw Error("This map has no shared actions");
@@ -710,13 +743,15 @@ export class Zoomap {
       ...(x || y ? screenToWorld(x, y) : {}),
     });
   }
-  private animate = (time: number) => {
-    if (this.disposed) return;
-    this.frame = requestAnimationFrame(this.animate);
-    const frameMs = Math.max(0, time - this.last);
-    const elapsed = Math.min(frameMs / 1000, 0.25);
+  // Advance independently of presentation cadence; main-thread stalls still withdraw authority.
+  private advance = (schedule = true) => {
+    if (this.disposed || this.stopped) return;
+    const time = performance.now();
+    if (schedule) this.simulationTimer = setTimeout(this.advance, STEP * 1000);
+    const intervalMs = Math.max(0, time - this.last);
+    const elapsed = Math.min(intervalMs / 1000, 0.25);
     this.last = time;
-    if (frameMs > 250 && !this.stopped) {
+    if (intervalMs > 250 && !this.stopped) {
       this.hostHealthy = false;
       this.healthySince = 0;
       this.accumulator = 0;
@@ -726,7 +761,7 @@ export class Zoomap {
           "paused",
           "Moving shared simulation to an active browser",
         );
-    } else if (!this.hostHealthy && frameMs < 100) {
+    } else if (!this.hostHealthy && intervalMs < 100) {
       if (!this.healthySince) this.healthySince = time;
       if (time - this.healthySince > 1000) this.hostHealthy = true;
     } else if (!this.hostHealthy) this.healthySince = 0;
@@ -763,7 +798,10 @@ export class Zoomap {
         if (this.host === this.session) {
           for (const id of Object.keys(this.inputs))
             if (time - (this.inputAt[id] ?? 0) > 250)
-              this.inputs[id] = idleInput();
+              this.inputs[id] =
+                (this.inputSequences[id] ?? 0) > (this.inputAcks[id] ?? 0)
+                  ? expireHeldInput(this.inputs[id])
+                  : idleInput();
           // Consume this exact local sample before acknowledging its sequence. The relay echo
           // can arrive later; it must not reintroduce an already-consumed kick or wave.
           const pendingLocal =
@@ -812,8 +850,36 @@ export class Zoomap {
         this.accumulator -= STEP;
       }
     } else this.accumulator = 0;
+  };
+  private animate = () => {
+    // RAF timestamps can precede the latest timer tick; sample the same clock
+    // as simulation to avoid clamping alternating frames to a stale pose.
+    const time = performance.now();
+    if (this.disposed || this.stopped) return;
+    this.frame = requestAnimationFrame(this.animate);
+    // A late timer must not leave RAF clamped at the end of its pose interval.
+    // Both clocks consume the same accumulator; physics still advances only at STEP.
+    this.advance(false);
+    // Give an unhealthy event loop a quiet recovery window. Repeated GPU work
+    // here can otherwise prevent every visible peer from ever regaining host
+    // eligibility after initial shader compilation or a long graphics frame.
+    if (document.hidden || !this.hostHealthy) {
+      this.lastRender = time;
+      return;
+    }
+    const elapsed = Math.max(
+      0,
+      Math.min(0.25, (time - this.lastRender) / 1000),
+    );
+    this.lastRender = time;
     if (this.local) {
-      const alpha = Math.max(0, Math.min(1, this.accumulator / STEP));
+      const alpha = Math.max(
+        0,
+        Math.min(
+          1,
+          (this.accumulator + Math.max(0, time - this.last) / 1000) / STEP,
+        ),
+      );
       const shownLocal = this.previousLocal
         ? interpolateBody(this.previousLocal, this.local, alpha)
         : { ...this.local };
@@ -869,6 +935,7 @@ export class Zoomap {
     this.stopped = true;
     this.presentation.reset();
     cancelAnimationFrame(this.frame);
+    clearTimeout(this.simulationTimer);
     clearTimeout(this.retry);
     this.clearInput();
     this.socket?.close();

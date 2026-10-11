@@ -1,17 +1,28 @@
 name: Verify
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: world-verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted", "macOS", "ARM64", "dcarrell-mac"]') }}
     timeout-minutes: 20
+    env:
+      ZMAP_TEST_PORT: "15175"
+      ZMAP_TEST_RELAY_PORT: "18789"
+      ZMAP_TEST_ACTION_PORT: "18791"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      # Checkout's submodule auth assumes HOME controls global Git config.
+      - run: git submodule update --init --recursive --depth=1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: ${{ runner.environment == 'github-hosted' && 'npm' || '' }}
       - run: npm ci
       - run: npm --prefix avatar-studio ci
       - run: npm run format:check
@@ -21,10 +32,10 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test tests/browser/entry.spec.ts
         env:
-          ZMAP_BROWSER_CHANNEL: chromium
+          ZMAP_BROWSER_CHANNEL: ${{ runner.os == 'macOS' && 'chrome' || 'chromium' }}
       - run: npm run test:e2e
         env:
-          ZMAP_BROWSER_CHANNEL: chromium
+          ZMAP_BROWSER_CHANNEL: ${{ runner.os == 'macOS' && 'chrome' || 'chromium' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

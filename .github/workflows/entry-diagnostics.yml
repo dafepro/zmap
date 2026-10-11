@@ -1,0 +1,32 @@
+name: Entry diagnostics
+on:
+  push:
+    branches: [codex/team-world-preintegration]
+  workflow_dispatch:
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        screenshots: ["0", "1"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci && npm --prefix avatar-studio ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/browser/entry.spec.ts tests/browser/actions.spec.ts tests/browser/synchronization.spec.ts --grep "two clients|three real clients|slow drawing callbacks|stalled simulation clock"
+        env:
+          ZMAP_BROWSER_CHANNEL: chromium
+          ZMAP_TRACE_SCREENSHOTS: ${{ matrix.screenshots }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: entry-evidence-${{ matrix.screenshots }}
+          path: test-results/

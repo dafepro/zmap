@@ -29,3 +29,46 @@ Cleanup validation passed 109 world unit/socket tests, 154 avatar unit tests, 30
 Real authentication and membership adapters; approved saved appearance resolution; transactional database persistence with bounded writes and unknown-outcome reconciliation; service restart and release deployment drills; graphics-context recovery; representative physical-phone load, thermal, input/entry/recovery percentiles, transport impairment and operating-cost measurements.
 
 The relay is currently one process/writer per room, with no distributed coordinator. Browser simulation is untrusted for rewards. Linked travel and map-generation switching are unfinished. No Canvas data migration or legacy fallback is required for this fresh v3.
+
+### September 17 shared kick patch
+
+Preview 0.1.7 adds optional bounded kick pose time to bodies, presentation and the
+relay's explicit field copy. Ten focused core, presentation and shared-performance
+socket tests pass, including peer snapshots and late join; the library TypeScript
+build passes. Preview 0.1.6 omitted relay forwarding and is superseded.
+
+The broad Windows engine test invocation is not green: this worktree's development
+avatar fixtures/helper and export do not match its installed development package,
+and ExampleStore directory fsync fails on Windows. Restore the matching development
+avatar setup and run the full suite on its supported filesystem before claiming
+whole-repository qualification. The consuming app tests its immutable packages
+separately; the focused patch results do not supersede the existing CI limitations.
+
+## v0.1.8 scheduling correction
+
+A controlled 45 ms delay on every fifth simulation timer reproduced 26 held moving
+frames in the independent Chrome sprint test; draining due fixed steps before
+rendering reduced this to zero. Seven Chrome sprint/synchronization tests pass,
+including two-peer cadence, delayed traffic, roster changes, slow presentation and
+stalled-host recovery. Separate peer contexts avoid background-tab RAF throttling
+in the cadence test. Host withdrawal is tested by stalling both scheduling clocks.
+
+On Windows, 111 of 116 unit/socket tests pass; five example-store/server tests and
+the durable three-peer browser case fail at unsupported directory fsync (EPERM).
+These storage-platform failures are outside this scheduling change. Phone/display
+hardware ghosting is not proven resolved by browser transform measurements.
+
+## v0.1.9 optional kick wind-up
+
+Maps can opt into bounded kick contact timing while movement stays live. The
+existing shared kick timer carries anticipation across checkpoint restoration;
+contact fires once at the threshold with current reach/height/blocker checks.
+Repeated input cannot postpone anticipation. Existing maps keep immediate kicks.
+Positive wind-up requires the negotiated `kick-windup-v1` capability.
+
+Validation: all new timing/movement/restart and real-socket capability checks
+pass; 114 of 119 Windows unit/socket tests pass. The same five example directory
+fsync/storage tests fail with EPERM. Types, library build, changed-file formatting
+and an independent packed ESM/TypeScript/browser consumer pass. This prerelease
+supports the Zoomigo running-shot integration; it does not waive the existing
+Windows storage or software-renderer qualification gaps.

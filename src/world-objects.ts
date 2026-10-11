@@ -1,3 +1,4 @@
+import { actionLineClear, type ActionCommand } from "./world-actions.js";
 import {
   finite,
   inside,
@@ -71,6 +72,15 @@ export type ObjectBehavior = {
   validEvent(event: ObjectEvent, object: WorldObject, map: WorldMap): boolean;
   /** One deterministic fixed step. No wall clock, random source, sockets, or renderer. */
   step(context: ObjectBehaviorContext): void;
+  /** Runs after player movement and all toy contacts, before publishing this tick. */
+  afterStep?(context: Omit<ObjectBehaviorContext, "holdToy">): void;
+  interactions?: readonly string[];
+  interact?(
+    state: ObjectValue,
+    action: string,
+    session: string,
+    tick: number,
+  ): void;
 };
 export type ObjectBehaviors = readonly ObjectBehavior[];
 export type WorldToyCollider = ObjectCollider & { rotation: number };
@@ -176,9 +186,20 @@ export function validateWorldObjects(
   map: WorldMap,
   behaviors: ObjectBehaviors = [],
 ) {
-  if (map.objects === undefined) return;
+  if (map.objects === undefined) {
+    if (map.actionCatalog?.interactions?.length)
+      throw Error("Interaction objects are missing");
+    return;
+  }
   if (!Array.isArray(map.objects) || map.objects.length > 5)
     throw Error("At most five active world objects are supported");
+  for (const entry of map.actionCatalog?.interactions ?? []) {
+    const object = map.objects.find((o) => o.id === entry.object);
+    if (!object) throw Error("Interaction object is missing");
+    const behavior = implementation(object, behaviors);
+    if (!behavior.interact || !behavior.interactions?.includes(entry.action))
+      throw Error("Interaction behavior is missing");
+  }
   const ids = new Set<string>([
     ...map.toys.map((toy) => toy.id),
     ...map.triggers.map((trigger) => trigger.id),
@@ -324,11 +345,16 @@ export function stepWorldObjects(
   const held = new Set<string>(),
     targets = new Map<string, Vec3>(),
     state = simulation.objects;
-  if (!state || !map.objects) return { held, targets };
+  const after: (() => void)[] = [];
+  const finish = () => {
+    for (const run of after) run();
+  };
+  if (!state || !map.objects) return { held, targets, finish };
   for (const object of [...map.objects].sort((a, b) =>
     a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
   )) {
-    implementation(object, behaviors).step({
+    const behavior = implementation(object, behaviors);
+    const context: ObjectBehaviorContext = {
       object,
       state: state.instances[object.id],
       map,
@@ -359,18 +385,23 @@ export function stepWorldObjects(
           kind,
           data: structuredClone(data),
         };
-        if (!implementation(object, behaviors).validEvent(event, object, map))
+        if (!behavior.validEvent(event, object, map))
           throw Error("Invalid world object event data");
         state.eventSequence++;
         state.events.push(event);
         if (state.events.length > 32) state.events.shift();
       },
-    });
+    };
+    behavior.step(context);
+    if (behavior.afterStep) {
+      const { holdToy: _holdToy, ...settled } = context;
+      after.push(() => behavior.afterStep!(settled));
+    }
   }
   state.events = state.events.filter(
     (event) => simulation.tick - event.tick <= 120,
   );
-  return { held, targets };
+  return { held, targets, finish };
 }
 export function worldToyColliders(map: WorldMap): WorldToyCollider[] {
   return (map.objects ?? []).flatMap((object) =>
@@ -379,5 +410,60 @@ export function worldToyColliders(map: WorldMap): WorldToyCollider[] {
       size: collider.size,
       rotation: object.rotation,
     })),
+  );
+}
+
+/** Same spatial query for contextual UI and authoritative command execution. */
+export function objectInteractionAvailable(
+  map: WorldMap,
+  simulation: Simulation,
+  session: string,
+  objectId: string,
+  action: string,
+  items: Placement[] = [],
+  catalog: ItemType[] = [],
+): boolean {
+  const body = simulation.players[session];
+  const object = map.objects?.find((o) => o.id === objectId);
+  const entry = map.actionCatalog?.interactions?.find(
+    (e) => e.object === objectId && e.action === action,
+  );
+  if (!body || !object || !entry) return false;
+  const from = { x: body.x, y: body.y + 0.8, z: body.z };
+  const to = objectPoint(object, entry.point);
+  return (
+    Math.hypot(from.x - to.x, from.y - to.y, from.z - to.z) <= entry.range &&
+    actionLineClear(map, from, to, items, catalog)
+  );
+}
+export function applyObjectInteraction(
+  map: WorldMap,
+  simulation: Simulation,
+  command: ActionCommand,
+  behaviors: ObjectBehaviors,
+  items: Placement[],
+  catalog: ItemType[],
+) {
+  const intent = command.intent;
+  if (
+    intent.kind !== "interact" ||
+    !simulation.objects ||
+    !objectInteractionAvailable(
+      map,
+      simulation,
+      command.session,
+      intent.object,
+      intent.action,
+      items,
+      catalog,
+    )
+  )
+    return;
+  const object = map.objects!.find((o) => o.id === intent.object)!;
+  implementation(object, behaviors).interact?.(
+    simulation.objects.instances[object.id],
+    intent.action,
+    command.session,
+    simulation.tick,
   );
 }
